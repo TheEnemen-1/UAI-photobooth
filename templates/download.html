@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Tải ảnh của bạn</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body { text-align: center; background: #004aad; color: white; font-family: sans-serif; }
+        img { width: 90%; border-radius: 10px; margin: 10px 0; border: 3px solid #ff914d; }
+    </style>
+</head>
+<body>
+    <h1>📸 Ảnh của bạn đây!</h1>
+    {% for p in photos %}
+        <img src="{{ p }}">
+    {% endfor %}
+    <p>Nhấn giữ vào ảnh để tải về nhé!</p>
+</body>
+</html>

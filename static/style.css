@@ -1,0 +1,53 @@
+:root {
+    --primary: #004aad; /* Xanh lam */
+    --secondary: #ff914d; /* Cam */
+    --bg: #f0f4f8;
+}
+
+body {
+    background-color: var(--bg);
+    color: #333;
+    font-family: 'Montserrat', sans-serif;
+    display: flex; flex-direction: column; align-items: center;
+}
+
+.topbar {
+    background: var(--primary);
+    width: 100%; padding: 20px;
+    color: white; text-align: center;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+.camera-wrap {
+    position: relative;
+    border: 8px solid var(--primary);
+    border-radius: 20px; overflow: hidden;
+    margin-top: 30px;
+}
+
+#countdown {
+    color: var(--secondary);
+    font-size: 150px; font-weight: bold;
+    text-shadow: 4px 4px 10px rgba(0,0,0,0.3);
+}
+
+.status-badge {
+    background: var(--secondary);
+    color: white; padding: 10px 20px;
+    border-radius: 50px; margin-top: 20px;
+}
+
+#qrImg {
+    border: 5px solid var(--primary);
+    border-radius: 10px;
+}
+
+#overlay {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none; /* Quan trọng để không chặn click */
+    transform: scaleX(-1); /* Phải mirror giống video */
+}
+
+.hidden { display: none; }

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AI Photobooth</title>
+<link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <h1>📸 AI Photobooth</h1>
+    <div class="controls">
+      <label>Camera:
+        <select id="cameraSelect"></select>
+      </label>
+      <label class="fileBtn">🖼 Khung trang trí (tuỳ chọn)
+        <input type="file" id="frameInput" accept="image/png" />
+      </label>
+    </div>
+  </header>
+
+  <main class="stage">
+    <div class="camera-wrap" id="cameraWrap">
+      <video id="video" autoplay playsinline muted></video>
+      <canvas id="overlay"></canvas>
+      <div id="shotCounter" class="shot-counter hidden">Tấm 1/4</div>
+      <div id="statusBadge" class="status-badge">Đưa 2 tay lên tạo hình chữ L (kiểu khung ảnh) để chụp ✋🖼✋</div>
+      <div id="debugInfo" class="debug-info"></div>
+      <div id="countdown" class="countdown hidden">3</div>
+    </div>
+
+    <div class="result-wrap hidden" id="resultWrap">
+      <h2>Kết quả — 4 tấm của bạn</h2>
+      <img id="resultImg" alt="Ảnh kết quả" />
+      <div class="qr-box">
+        <img id="qrImg" alt="QR code" />
+        <p>Quét QR để tải ảnh về điện thoại</p>
+        <a id="downloadLink" href="#" target="_blank">Hoặc mở link tại đây</a>
+      </div>
+      <button id="retakeBtn">🔁 Chụp lại</button>
+    </div>
+  </main>
+
+  <canvas id="captureCanvas" class="hidden"></canvas>
+
+  <script type="module" src="/static/app.js"></script>
+</body>
+</html>
