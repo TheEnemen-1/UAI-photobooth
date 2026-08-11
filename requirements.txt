@@ -1,0 +1,6 @@
+flask          # Framework chạy web server
+opencv-python  # Xử lý ảnh và áp dụng bộ lọc làm đẹp
+mediapipe      # AI nhận diện cử chỉ tay
+qrcode         # Tạo mã QR để tải ảnh
+pillow         # Hỗ trợ xử lý định dạng ảnh cho QR
+numpy          # Tính toán ma trận hình ảnh
