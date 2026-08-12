@@ -1,48 +1,38 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>AI Photobooth</title>
-<link rel="stylesheet" href="/static/style.css" />
+    <meta charset="UTF-8">
+    <title>AI Tech Photobooth</title>
+    <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-  <header class="topbar">
-    <h1>📸 AI Photobooth</h1>
-    <div class="controls">
-      <label>Camera:
+    <header class="topbar">
+        <h3>📸 PHOTOBOOTH AI</h3>
         <select id="cameraSelect"></select>
-      </label>
-      <label class="fileBtn">🖼 Khung trang trí (tuỳ chọn)
-        <input type="file" id="frameInput" accept="image/png" />
-      </label>
-    </div>
-  </header>
+        <button id="btnFlip" class="btn-control">🔄 Flip Camera</button>
+        <label style="font-size: 12px;">Frame (PNG): <input type="file" id="frameInput" accept="image/png"></label>
+    </header>
 
-  <main class="stage">
-    <div class="camera-wrap" id="cameraWrap">
-      <video id="video" autoplay playsinline muted></video>
-      <canvas id="overlay"></canvas>
-      <div id="shotCounter" class="shot-counter hidden">Tấm 1/4</div>
-      <div id="statusBadge" class="status-badge">Đưa 2 tay lên tạo hình chữ L (kiểu khung ảnh) để chụp ✋🖼✋</div>
-      <div id="debugInfo" class="debug-info"></div>
-      <div id="countdown" class="countdown hidden">3</div>
+    <div id="cameraWrap">
+        <div class="camera-container">
+            <video id="video" class="mirrored" autoplay playsinline muted></video>
+            <canvas id="overlay" class="mirrored"></canvas>
+            <div id="countdown" class="hidden">3</div>
+        </div>
+        <div id="statusBadge" class="status-badge">Đang khởi tạo AI...</div>
     </div>
 
-    <div class="result-wrap hidden" id="resultWrap">
-      <h2>Kết quả — 4 tấm của bạn</h2>
-      <img id="resultImg" alt="Ảnh kết quả" />
-      <div class="qr-box">
-        <img id="qrImg" alt="QR code" />
-        <p>Quét QR để tải ảnh về điện thoại</p>
-        <a id="downloadLink" href="#" target="_blank">Hoặc mở link tại đây</a>
-      </div>
-      <button id="retakeBtn">🔁 Chụp lại</button>
+    <div id="resultWrap" class="result-wrap hidden">
+        <img id="resultImg" src="">
+        <div class="qr-box">
+            <img id="qrImg" src="">
+            <p>Quét QR để tải ảnh</p>
+            <a id="downloadLink" target="_blank" style="color: blue;">Mở link tải ảnh</a>
+            <br><br>
+            <button onclick="location.reload()" class="btn-control">🔁 CHỤP LẠI</button>
+        </div>
     </div>
-  </main>
 
-  <canvas id="captureCanvas" class="hidden"></canvas>
-
-  <script type="module" src="/static/app.js"></script>
+    <script type="module" src="/static/app.js"></script>
 </body>
 </html>
