@@ -14,12 +14,15 @@ if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
 def get_lan_ip():
+    # Cách này sẽ cố gắng tìm IP thực tế đang kết nối internet
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
+        # Không cần kết nối thật, chỉ để xác định interface mạng đang dùng
         s.connect(('8.8.8.8', 80))
         ip = s.getsockname()[0]
     except Exception:
-        ip = '127.0.0.1'
+        # Nếu không có mạng internet, thử lấy IP máy
+        ip = socket.gethostbyname(socket.gethostname())
     finally:
         s.close()
     return ip
@@ -34,7 +37,7 @@ def apply_beauty_filter(cv_img):
     return cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
 
 def create_strip(session_dir, photos_count, frame_file=None):
-    # Kích thước dải tiêu chuẩn 1:3
+    # Dải 600x1800 (Tỉ lệ 1:3 chuẩn Photobooth)
     strip_w, strip_h = 600, 1800
     canvas = Image.new('RGBA', (strip_w, strip_h), (255, 255, 255, 255))
     
@@ -45,19 +48,18 @@ def create_strip(session_dir, photos_count, frame_file=None):
     
     for i in range(photos_count):
         img_path = os.path.join(session_dir, f'photo_{i}.png')
-        img = Image.open(img_path).convert("RGBA")
-        img = img.resize((img_w, img_h), Image.Resampling.LANCZOS)
-        y_offset = start_y + i * (img_h + gap)
-        canvas.paste(img, (padding_x, y_offset))
+        if os.path.exists(img_path):
+            img = Image.open(img_path).convert("RGBA")
+            img = img.resize((img_w, img_h), Image.Resampling.LANCZOS)
+            y_offset = start_y + i * (img_h + gap)
+            canvas.paste(img, (padding_x, y_offset))
     
-    # Nếu có upload frame
     if frame_file:
         try:
             frame_img = Image.open(frame_file).convert("RGBA")
             frame_img = frame_img.resize((strip_w, strip_h), Image.Resampling.LANCZOS)
             canvas.alpha_composite(frame_img)
-        except:
-            print("Lỗi frame")
+        except: pass
 
     final_path = os.path.join(session_dir, 'final_strip.png')
     canvas.convert("RGB").save(final_path)
@@ -73,7 +75,6 @@ def save_photos():
     session_dir = os.path.join(UPLOAD_FOLDER, session_id)
     os.makedirs(session_dir)
 
-    # Nhận ảnh frame (nếu có)
     frame_file = request.files.get('frame')
     
     for i in range(4):
@@ -88,7 +89,7 @@ def save_photos():
     strip_filename = create_strip(session_dir, 4, frame_file)
 
     lan_ip = get_lan_ip()
-    # Gợi ý: Nếu dùng Ngrok, hãy đổi link này thành link Ngrok
+    # Đường dẫn chuẩn để QR có thể quét được trong mạng LAN
     download_url = f"http://{lan_ip}:5000/download/{session_id}"
     qr = qrcode.make(download_url)
     qr.save(os.path.join(session_dir, 'qr.png'))
@@ -109,4 +110,5 @@ def download_page(session_id):
     return render_template('download.html', strip_url=strip_url)
 
 if __name__ == '__main__':
+    print(f"TRUY CẬP TẠI: http://{get_lan_ip()}:5000")
     app.run(host='0.0.0.0', port=5000)

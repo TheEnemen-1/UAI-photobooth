@@ -16,33 +16,31 @@ body {
 }
 
 .camera-container {
-    position: relative; width: 800px; height: 450px; margin-top: 20px;
-    border: 3px solid var(--primary); border-radius: 15px; overflow: hidden;
+    position: relative; width: 850px; height: 480px; margin-top: 20px;
+    border: 4px solid var(--primary); border-radius: 20px; overflow: hidden;
 }
 
-/* Class flip để điều khiển gương */
-.mirrored { transform: scaleX(-1); }
-
-#video, #overlay { width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; }
+#video, #overlay { 
+    width: 100%; height: 100%; object-fit: cover; 
+    position: absolute; top: 0; left: 0; 
+    transform: scaleX(-1); /* Mặc định mirror */
+}
 
 #countdown {
     position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-    font-size: 150px; font-weight: 900; color: var(--secondary); z-index: 10;
+    font-size: 160px; font-weight: 900; color: var(--secondary); z-index: 10;
 }
 
 .status-badge {
-    margin-top: 20px; padding: 10px 25px; border-radius: 50px;
+    margin-top: 20px; padding: 12px 30px; border-radius: 50px;
     background: linear-gradient(90deg, var(--primary), var(--secondary));
-    font-weight: bold; text-align: center; min-width: 300px;
+    font-weight: bold; font-size: 18px;
 }
 
-.btn-control {
-    padding: 8px 15px; background: #334155; border: 1px solid var(--primary);
-    color: white; border-radius: 5px; cursor: pointer;
-}
+.result-wrap { display: flex; gap: 40px; margin: 30px 0; }
+#resultImg { height: 700px; border: 8px solid white; border-radius: 10px; }
+.qr-box { background: white; color: black; padding: 25px; border-radius: 20px; text-align: center; height: fit-content; }
+.qr-box img { width: 200px; margin-bottom: 15px; }
 
-.result-wrap { display: flex; gap: 40px; margin-top: 20px; }
-#resultImg { height: 650px; border: 5px solid white; }
-.qr-box { background: white; color: black; padding: 20px; border-radius: 15px; text-align: center; }
-.qr-box img { width: 180px; }
 .hidden { display: none !important; }
+.btn { padding: 10px 20px; border-radius: 8px; border: 1px solid var(--primary); background: #1e293b; color: white; cursor: pointer; }

@@ -11,7 +11,7 @@ const btnFlip = document.getElementById("btnFlip");
 let handLandmarker;
 let isCapturing = false;
 let gestureStart = null;
-let isMirrored = true;
+let isMirrored = true; // Mặc định là gương
 
 async function init() {
     const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm");
@@ -27,15 +27,22 @@ async function init() {
     startCamera();
 }
 
+// Chức năng Flip Camera
 btnFlip.onclick = () => {
     isMirrored = !isMirrored;
-    video.classList.toggle("mirrored", isMirrored);
-    canvasElement.classList.toggle("mirrored", isMirrored);
+    if (isMirrored) {
+        video.style.transform = "scaleX(-1)";
+        canvasElement.style.transform = "scaleX(-1)";
+    } else {
+        video.style.transform = "scaleX(1)";
+        canvasElement.style.transform = "scaleX(1)";
+    }
 };
 
 async function setupCameraList() {
     const devices = await navigator.mediaDevices.enumerateDevices();
-    devices.filter(d => d.kind === 'videoinput').forEach(d => {
+    const videoDevices = devices.filter(d => d.kind === 'videoinput');
+    videoDevices.forEach(d => {
         const opt = document.createElement("option");
         opt.value = d.deviceId;
         opt.text = d.label || `Camera ${cameraSelect.length + 1}`;
@@ -45,9 +52,10 @@ async function setupCameraList() {
 }
 
 async function startCamera() {
-    const stream = await navigator.mediaDevices.getUserMedia({ 
+    const constraints = { 
         video: { deviceId: cameraSelect.value ? { exact: cameraSelect.value } : undefined, width: 1280, height: 720 } 
-    });
+    };
+    const stream = await navigator.mediaDevices.getUserMedia(constraints);
     video.srcObject = stream;
     video.onloadedmetadata = () => {
         canvasElement.width = video.videoWidth;
@@ -58,8 +66,10 @@ async function startCamera() {
 
 function isLSelection(landmarks) {
     const wrist = landmarks[0];
-    const isThumbExt = Math.hypot(landmarks[4].x - wrist.x, landmarks[4].y - wrist.y) > Math.hypot(landmarks[2].x - wrist.x, landmarks[2].y - wrist.y);
-    const isIndexExt = Math.hypot(landmarks[8].x - wrist.x, landmarks[8].y - wrist.y) > Math.hypot(landmarks[6].x - wrist.x, landmarks[6].y - wrist.y);
+    const thumbTip = landmarks[4];
+    const indexTip = landmarks[8];
+    const isThumbExt = Math.hypot(thumbTip.x - wrist.x, thumbTip.y - wrist.y) > Math.hypot(landmarks[2].x - wrist.x, landmarks[2].y - wrist.y);
+    const isIndexExt = Math.hypot(indexTip.x - wrist.x, indexTip.y - wrist.y) > Math.hypot(landmarks[6].x - wrist.x, landmarks[6].y - wrist.y);
     const isOthersCurled = [12, 16, 20].every(i => Math.hypot(landmarks[i].x - wrist.x, landmarks[i].y - wrist.y) < Math.hypot(landmarks[i-2].x - wrist.x, landmarks[i-2].y - wrist.y));
     return isThumbExt && isIndexExt && isOthersCurled;
 }
@@ -68,31 +78,34 @@ async function predict() {
     canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
     if (handLandmarker && !isCapturing) {
         const results = await handLandmarker.detectForVideo(video, performance.now());
-        
-        const count = results.landmarks ? results.landmarks.length : 0;
-        
-        if (count === 1) {
-            statusBadge.innerText = "ĐÃ THẤY 1 TAY. GIƠ THÊM 1 TAY NỮA NHÉ! ✋";
+        const handCount = results.landmarks ? results.landmarks.length : 0;
+
+        if (handCount === 0) {
+            statusBadge.innerText = "ĐANG CHỜ NHẬN DIỆN 2 TAY... ✋✋";
             gestureStart = null;
-        } else if (count >= 2) {
+        } else if (handCount === 1) {
+            statusBadge.innerText = "ĐÃ THẤY 1 TAY. GIƠ THÊM TAY KIA NỮA NHÉ! ✨";
+            gestureStart = null;
+        } else {
             const handsL = results.landmarks.filter(isLSelection);
             if (handsL.length >= 2) {
                 if (!gestureStart) gestureStart = Date.now();
                 const elapsed = Date.now() - gestureStart;
                 
+                // Vẽ khung hiệu ứng
                 canvasCtx.strokeStyle = "#00d2ff";
                 canvasCtx.lineWidth = 10;
-                canvasCtx.strokeRect(30, 30, canvasElement.width-60, canvasElement.height-60);
+                canvasCtx.strokeRect(50, 50, canvasElement.width-100, canvasElement.height-100);
 
-                if (elapsed > 1000) { startPhotoboothFlow(); return; }
+                if (elapsed > 1000) {
+                    startPhotoboothFlow();
+                    return;
+                }
                 statusBadge.innerText = `GIỮ NGUYÊN... ${(elapsed/1000).toFixed(1)}s`;
             } else {
-                statusBadge.innerText = "HÃY TẠO HÌNH 2 CHỮ L (SON HEUNG MIN)";
+                statusBadge.innerText = "HÃY TẠO HÌNH 2 CHỮ L ĐỂ CHỤP";
                 gestureStart = null;
             }
-        } else {
-            statusBadge.innerText = "ĐANG CHỜ NHẬN DIỆN 2 TAY...";
-            gestureStart = null;
         }
     }
     if(!isCapturing) requestAnimationFrame(predict);
@@ -127,7 +140,6 @@ async function startPhotoboothFlow() {
         const blob = await new Promise(res => capCanvas.toBlob(res, 'image/png'));
         photos.push(blob);
     }
-    
     uploadPhotos(photos);
 }
 
@@ -141,8 +153,7 @@ async function uploadPhotos(blobs) {
     const data = await res.json();
     
     document.getElementById("cameraWrap").classList.add("hidden");
-    const rw = document.getElementById("resultWrap");
-    rw.classList.remove("hidden");
+    document.getElementById("resultWrap").classList.remove("hidden");
     document.getElementById("resultImg").src = data.strip_url;
     document.getElementById("qrImg").src = data.qr_url;
     document.getElementById("downloadLink").href = `/download/${data.session_id}`;

@@ -2,34 +2,34 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>AI Tech Photobooth</title>
+    <title>AI Photobooth Pro</title>
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
     <header class="topbar">
-        <h3>📸 PHOTOBOOTH AI</h3>
-        <select id="cameraSelect"></select>
-        <button id="btnFlip" class="btn-control">🔄 Flip Camera</button>
-        <label style="font-size: 12px;">Frame (PNG): <input type="file" id="frameInput" accept="image/png"></label>
+        <h3>✨ AI PHOTOBOOTH</h3>
+        <select id="cameraSelect" class="btn"></select>
+        <button id="btnFlip" class="btn">🔄 Flip Camera</button>
+        <label class="btn">🖼 Frame (PNG): <input type="file" id="frameInput" accept="image/png" style="display:none"></label>
     </header>
 
     <div id="cameraWrap">
         <div class="camera-container">
-            <video id="video" class="mirrored" autoplay playsinline muted></video>
-            <canvas id="overlay" class="mirrored"></canvas>
+            <video id="video" autoplay playsinline muted></video>
+            <canvas id="overlay"></canvas>
             <div id="countdown" class="hidden">3</div>
         </div>
-        <div id="statusBadge" class="status-badge">Đang khởi tạo AI...</div>
+        <center><div id="statusBadge" class="status-badge">Đang tải AI...</div></center>
     </div>
 
     <div id="resultWrap" class="result-wrap hidden">
         <img id="resultImg" src="">
         <div class="qr-box">
             <img id="qrImg" src="">
-            <p>Quét QR để tải ảnh</p>
-            <a id="downloadLink" target="_blank" style="color: blue;">Mở link tải ảnh</a>
+            <h4>Quét để tải ảnh</h4>
+            <a id="downloadLink" target="_blank" style="color: #004aad; font-weight: bold;">Mở link trực tiếp</a>
             <br><br>
-            <button onclick="location.reload()" class="btn-control">🔁 CHỤP LẠI</button>
+            <button onclick="location.reload()" class="btn" style="background: var(--secondary); width: 100%;">CHỤP LẠI</button>
         </div>
     </div>
 
