@@ -2,34 +2,53 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>AI Photobooth Pro</title>
+    <title>UAI Photobooth | USTH</title>
     <link rel="stylesheet" href="/static/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&display=swap" rel="stylesheet">
 </head>
 <body>
+    <div class="header-brand">
+        <h1>UAI photobooth</h1>
+        <p>creating memories at USTH</p>
+    </div>
+
     <header class="topbar">
-        <h3>✨ AI PHOTOBOOTH</h3>
         <select id="cameraSelect" class="btn"></select>
         <button id="btnFlip" class="btn">🔄 Flip Camera</button>
         <label class="btn">🖼 Frame (PNG): <input type="file" id="frameInput" accept="image/png" style="display:none"></label>
     </header>
 
-    <div id="cameraWrap">
-        <div class="camera-container">
-            <video id="video" autoplay playsinline muted></video>
-            <canvas id="overlay"></canvas>
-            <div id="countdown" class="hidden">3</div>
+    <main id="cameraStage" class="stage">
+        <div class="left-panel">
+            <div class="camera-container">
+                <video id="video" autoplay playsinline muted></video>
+                <canvas id="overlay"></canvas>
+                <div id="flash" class="flash-effect"></div>
+                <div id="countdown" class="hidden">3</div>
+            </div>
+            <div id="statusBadge" class="status-badge">Đang khởi tạo AI...</div>
         </div>
-        <center><div id="statusBadge" class="status-badge">Đang tải AI...</div></center>
-    </div>
+
+        <div class="right-panel">
+            <h4>DEMO ẢNH VỪA CHỤP</h4>
+            <div id="thumbList" class="thumb-list">
+                <!-- Ảnh demo sẽ xuất hiện ở đây -->
+                <div class="thumb-item"></div>
+                <div class="thumb-item"></div>
+                <div class="thumb-item"></div>
+                <div class="thumb-item"></div>
+            </div>
+        </div>
+    </main>
 
     <div id="resultWrap" class="result-wrap hidden">
         <img id="resultImg" src="">
         <div class="qr-box">
             <img id="qrImg" src="">
-            <h4>Quét để tải ảnh</h4>
+            <h4>Quét để lấy ảnh ✨</h4>
             <a id="downloadLink" target="_blank" style="color: #004aad; font-weight: bold;">Mở link trực tiếp</a>
             <br><br>
-            <button onclick="location.reload()" class="btn" style="background: var(--secondary); width: 100%;">CHỤP LẠI</button>
+            <button onclick="location.reload()" class="btn" style="background: var(--accent); width: 100%; color: white;">CHỤP LẠI</button>
         </div>
     </div>
 

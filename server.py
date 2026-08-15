@@ -14,30 +14,17 @@ if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
 def get_lan_ip():
-    # Cách này sẽ cố gắng tìm IP thực tế đang kết nối internet
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
-        # Không cần kết nối thật, chỉ để xác định interface mạng đang dùng
         s.connect(('8.8.8.8', 80))
         ip = s.getsockname()[0]
     except Exception:
-        # Nếu không có mạng internet, thử lấy IP máy
-        ip = socket.gethostbyname(socket.gethostname())
+        ip = '127.0.0.1'
     finally:
         s.close()
     return ip
 
-def apply_beauty_filter(cv_img):
-    smooth = cv2.bilateralFilter(cv_img, 15, 75, 75)
-    adjusted = cv2.convertScaleAbs(smooth, alpha=1.1, beta=15)
-    lab = cv2.cvtColor(adjusted, cv2.COLOR_BGR2LAB)
-    l, a, b = cv2.split(lab)
-    a = cv2.add(a, 8) 
-    lab = cv2.merge((l, a, b))
-    return cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
-
 def create_strip(session_dir, photos_count, frame_file=None):
-    # Dải 600x1800 (Tỉ lệ 1:3 chuẩn Photobooth)
     strip_w, strip_h = 600, 1800
     canvas = Image.new('RGBA', (strip_w, strip_h), (255, 255, 255, 255))
     
@@ -82,14 +69,11 @@ def save_photos():
         if file:
             temp_path = os.path.join(session_dir, f'photo_{i}.png')
             file.save(temp_path)
-            img = cv2.imread(temp_path)
-            img_beauty = apply_beauty_filter(img)
-            cv2.imwrite(temp_path, img_beauty)
+            # KHÔNG DÙNG FILTER NỮA - ĐỂ NGUYÊN MÀU GỐC
 
     strip_filename = create_strip(session_dir, 4, frame_file)
 
     lan_ip = get_lan_ip()
-    # Đường dẫn chuẩn để QR có thể quét được trong mạng LAN
     download_url = f"http://{lan_ip}:5000/download/{session_id}"
     qr = qrcode.make(download_url)
     qr.save(os.path.join(session_dir, 'qr.png'))

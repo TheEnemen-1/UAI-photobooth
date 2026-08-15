@@ -1,46 +1,86 @@
 :root {
-    --primary: #00d2ff;
-    --secondary: #ff914d;
-    --dark: #0f172a;
+    --primary: #004aad; /* Xanh đậm USTH */
+    --accent: #ff914d;  /* Cam */
+    --bg: #0f172a;
 }
 
 body {
-    background-color: var(--dark);
-    color: white; font-family: 'Segoe UI', sans-serif;
-    margin: 0; display: flex; flex-direction: column; align-items: center;
+    background-color: var(--bg);
+    color: white; font-family: 'Montserrat', sans-serif;
+    margin: 0; overflow-x: hidden;
 }
 
-.topbar {
-    width: 100%; padding: 15px; background: rgba(255,255,255,0.05);
-    display: flex; justify-content: center; gap: 20px; align-items: center;
+/* Header Branding */
+.header-brand {
+    text-align: center; padding: 20px 0 10px 0;
 }
+.header-brand h1 { 
+    margin: 0; font-size: 42px; color: var(--accent); text-transform: uppercase; letter-spacing: 2px;
+}
+.header-brand p { margin: 0; font-size: 14px; opacity: 0.8; letter-spacing: 1px; }
+
+/* Topbar Controls */
+.topbar {
+    width: 100%; padding: 10px; display: flex; justify-content: center; gap: 15px; align-items: center;
+}
+
+/* Main Layout: 2/3 Left, 1/3 Right */
+.stage {
+    display: flex; width: 95%; max-width: 1200px; margin: 0 auto; gap: 20px; align-items: flex-start;
+}
+
+/* Cột trái: Camera */
+.left-panel { flex: 2; position: relative; }
 
 .camera-container {
-    position: relative; width: 850px; height: 480px; margin-top: 20px;
-    border: 4px solid var(--primary); border-radius: 20px; overflow: hidden;
+    position: relative; width: 100%; aspect-ratio: 16/9;
+    border: 4px solid var(--primary); border-radius: 15px; overflow: hidden;
+    background: #000;
 }
 
 #video, #overlay { 
-    width: 100%; height: 100%; object-fit: cover; 
-    position: absolute; top: 0; left: 0; 
-    transform: scaleX(-1); /* Mặc định mirror */
+    width: 100%; height: 100%; object-fit: cover; position: absolute; 
+    top: 0; left: 0; transform: scaleX(-1); 
 }
+
+/* Hiệu ứng Flash trắng khi chụp */
+.flash-effect {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    background: white; opacity: 0; pointer-events: none; z-index: 100;
+}
+.do-flash { animation: flash-anim 0.4s ease-out; }
+@keyframes flash-anim { 0% { opacity: 1; } 100% { opacity: 0; } }
+
+/* Cột phải: Ảnh Demo */
+.right-panel {
+    flex: 1; display: flex; flex-direction: column; gap: 10px;
+    background: rgba(255,255,255,0.05); padding: 15px; border-radius: 15px;
+    min-height: 400px; border: 1px solid rgba(255,255,255,0.1);
+}
+.right-panel h4 { margin: 0; text-align: center; font-size: 14px; color: var(--accent); }
+
+.thumb-list { display: flex; flex-direction: column; gap: 10px; align-items: center; }
+.thumb-item {
+    width: 100%; aspect-ratio: 4/3; border: 2px solid var(--primary);
+    border-radius: 8px; background: #222; overflow: hidden;
+}
+.thumb-item img { width: 100%; height: 100%; object-fit: cover; }
 
 #countdown {
     position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-    font-size: 160px; font-weight: 900; color: var(--secondary); z-index: 10;
+    font-size: 150px; font-weight: 900; color: var(--accent); z-index: 50; text-shadow: 0 0 20px rgba(0,0,0,0.5);
 }
 
 .status-badge {
-    margin-top: 20px; padding: 12px 30px; border-radius: 50px;
-    background: linear-gradient(90deg, var(--primary), var(--secondary));
-    font-weight: bold; font-size: 18px;
+    margin-top: 15px; padding: 10px; border-radius: 50px;
+    background: var(--primary); font-weight: bold; text-align: center;
 }
 
-.result-wrap { display: flex; gap: 40px; margin: 30px 0; }
-#resultImg { height: 700px; border: 8px solid white; border-radius: 10px; }
-.qr-box { background: white; color: black; padding: 25px; border-radius: 20px; text-align: center; height: fit-content; }
-.qr-box img { width: 200px; margin-bottom: 15px; }
+.result-wrap { display: flex; justify-content: center; gap: 40px; margin: 30px 0; }
+#resultImg { height: 650px; border: 8px solid white; border-radius: 10px; }
+.qr-box { background: white; color: black; padding: 25px; border-radius: 20px; text-align: center; }
+.qr-box img { width: 180px; }
 
 .hidden { display: none !important; }
-.btn { padding: 10px 20px; border-radius: 8px; border: 1px solid var(--primary); background: #1e293b; color: white; cursor: pointer; }
+.btn { padding: 8px 16px; border-radius: 8px; border: 1px solid var(--accent); background: transparent; color: white; cursor: pointer; font-size: 13px; }
+.btn:hover { background: var(--accent); color: var(--bg); }

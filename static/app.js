@@ -7,11 +7,16 @@ const statusBadge = document.getElementById("statusBadge");
 const cameraSelect = document.getElementById("cameraSelect");
 const frameInput = document.getElementById("frameInput");
 const btnFlip = document.getElementById("btnFlip");
+const flashDiv = document.getElementById("flash");
+const thumbList = document.getElementById("thumbList");
+
+// Tạo âm thanh chụp ảnh
+const shutterSound = new Audio("https://cdn.pixabay.com/audio/2022/03/15/audio_5106518731.mp3");
 
 let handLandmarker;
 let isCapturing = false;
 let gestureStart = null;
-let isMirrored = true; // Mặc định là gương
+let isMirrored = true;
 
 async function init() {
     const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm");
@@ -27,22 +32,16 @@ async function init() {
     startCamera();
 }
 
-// Chức năng Flip Camera
 btnFlip.onclick = () => {
     isMirrored = !isMirrored;
-    if (isMirrored) {
-        video.style.transform = "scaleX(-1)";
-        canvasElement.style.transform = "scaleX(-1)";
-    } else {
-        video.style.transform = "scaleX(1)";
-        canvasElement.style.transform = "scaleX(1)";
-    }
+    const val = isMirrored ? "scaleX(-1)" : "scaleX(1)";
+    video.style.transform = val;
+    canvasElement.style.transform = val;
 };
 
 async function setupCameraList() {
     const devices = await navigator.mediaDevices.enumerateDevices();
-    const videoDevices = devices.filter(d => d.kind === 'videoinput');
-    videoDevices.forEach(d => {
+    devices.filter(d => d.kind === 'videoinput').forEach(d => {
         const opt = document.createElement("option");
         opt.value = d.deviceId;
         opt.text = d.label || `Camera ${cameraSelect.length + 1}`;
@@ -52,9 +51,7 @@ async function setupCameraList() {
 }
 
 async function startCamera() {
-    const constraints = { 
-        video: { deviceId: cameraSelect.value ? { exact: cameraSelect.value } : undefined, width: 1280, height: 720 } 
-    };
+    const constraints = { video: { deviceId: cameraSelect.value ? { exact: cameraSelect.value } : undefined, width: 1280, height: 720 } };
     const stream = await navigator.mediaDevices.getUserMedia(constraints);
     video.srcObject = stream;
     video.onloadedmetadata = () => {
@@ -66,10 +63,8 @@ async function startCamera() {
 
 function isLSelection(landmarks) {
     const wrist = landmarks[0];
-    const thumbTip = landmarks[4];
-    const indexTip = landmarks[8];
-    const isThumbExt = Math.hypot(thumbTip.x - wrist.x, thumbTip.y - wrist.y) > Math.hypot(landmarks[2].x - wrist.x, landmarks[2].y - wrist.y);
-    const isIndexExt = Math.hypot(indexTip.x - wrist.x, indexTip.y - wrist.y) > Math.hypot(landmarks[6].x - wrist.x, landmarks[6].y - wrist.y);
+    const isThumbExt = Math.hypot(landmarks[4].x - wrist.x, landmarks[4].y - wrist.y) > Math.hypot(landmarks[2].x - wrist.x, landmarks[2].y - wrist.y);
+    const isIndexExt = Math.hypot(landmarks[8].x - wrist.x, landmarks[8].y - wrist.y) > Math.hypot(landmarks[6].x - wrist.x, landmarks[6].y - wrist.y);
     const isOthersCurled = [12, 16, 20].every(i => Math.hypot(landmarks[i].x - wrist.x, landmarks[i].y - wrist.y) < Math.hypot(landmarks[i-2].x - wrist.x, landmarks[i-2].y - wrist.y));
     return isThumbExt && isIndexExt && isOthersCurled;
 }
@@ -81,29 +76,20 @@ async function predict() {
         const handCount = results.landmarks ? results.landmarks.length : 0;
 
         if (handCount === 0) {
-            statusBadge.innerText = "ĐANG CHỜ NHẬN DIỆN 2 TAY... ✋✋";
+            statusBadge.innerText = "Sẵn sàng nhận diện chữ L (Son Heung Min) để chụp! ✋✋";
             gestureStart = null;
         } else if (handCount === 1) {
-            statusBadge.innerText = "ĐÃ THẤY 1 TAY. GIƠ THÊM TAY KIA NỮA NHÉ! ✨";
+            statusBadge.innerText = "Đã thấy 1 tay. Giơ thêm tay kia nhé! ✨";
             gestureStart = null;
         } else {
             const handsL = results.landmarks.filter(isLSelection);
             if (handsL.length >= 2) {
                 if (!gestureStart) gestureStart = Date.now();
                 const elapsed = Date.now() - gestureStart;
-                
-                // Vẽ khung hiệu ứng
-                canvasCtx.strokeStyle = "#00d2ff";
-                canvasCtx.lineWidth = 10;
-                canvasCtx.strokeRect(50, 50, canvasElement.width-100, canvasElement.height-100);
-
-                if (elapsed > 1000) {
-                    startPhotoboothFlow();
-                    return;
-                }
+                if (elapsed > 1000) { startPhotoboothFlow(); return; }
                 statusBadge.innerText = `GIỮ NGUYÊN... ${(elapsed/1000).toFixed(1)}s`;
             } else {
-                statusBadge.innerText = "HÃY TẠO HÌNH 2 CHỮ L ĐỂ CHỤP";
+                statusBadge.innerText = "Giơ 2 tay hình chữ L để chụp";
                 gestureStart = null;
             }
         }
@@ -114,6 +100,7 @@ async function predict() {
 async function startPhotoboothFlow() {
     isCapturing = true;
     const photos = [];
+    thumbList.innerHTML = ""; // Xóa ảnh cũ
     const countdownEl = document.getElementById("countdown");
 
     for (let i = 0; i < 4; i++) {
@@ -123,28 +110,37 @@ async function startPhotoboothFlow() {
             countdownEl.classList.remove("hidden");
             await new Promise(r => setTimeout(r, 1000));
         }
-        countdownEl.innerText = "📸";
-        await new Promise(r => setTimeout(r, 300));
+        
+        // HIỆU ỨNG CHỤP ẢNH
         countdownEl.classList.add("hidden");
+        shutterSound.play(); // Tiếng tách
+        flashDiv.classList.add("do-flash"); // Nháy sáng
+        setTimeout(() => flashDiv.classList.remove("do-flash"), 400);
         
         const capCanvas = document.createElement("canvas");
         capCanvas.width = video.videoWidth;
         capCanvas.height = video.videoHeight;
         const ctx = capCanvas.getContext("2d");
-        
-        if (isMirrored) {
-            ctx.translate(capCanvas.width, 0);
-            ctx.scale(-1, 1);
-        }
+        if (isMirrored) { ctx.translate(capCanvas.width, 0); ctx.scale(-1, 1); }
         ctx.drawImage(video, 0, 0);
+        
+        // Hiện ảnh demo sang bên phải
+        const thumbDiv = document.createElement("div");
+        thumbDiv.className = "thumb-item";
+        const thumbImg = document.createElement("img");
+        thumbImg.src = capCanvas.toDataURL("image/png");
+        thumbDiv.appendChild(thumbImg);
+        thumbList.appendChild(thumbDiv);
+
         const blob = await new Promise(res => capCanvas.toBlob(res, 'image/png'));
         photos.push(blob);
+        await new Promise(r => setTimeout(r, 500)); // Nghỉ ngắn giữa các tấm
     }
     uploadPhotos(photos);
 }
 
 async function uploadPhotos(blobs) {
-    statusBadge.innerText = "ĐANG XỬ LÝ ẢNH...";
+    statusBadge.innerText = "ĐANG XỬ LÝ DẢI ẢNH...";
     const formData = new FormData();
     blobs.forEach((b, i) => formData.append(`photo_${i}`, b));
     if (frameInput.files[0]) formData.append('frame', frameInput.files[0]);
@@ -152,7 +148,7 @@ async function uploadPhotos(blobs) {
     const res = await fetch('/api/save', { method: 'POST', body: formData });
     const data = await res.json();
     
-    document.getElementById("cameraWrap").classList.add("hidden");
+    document.getElementById("cameraStage").classList.add("hidden");
     document.getElementById("resultWrap").classList.remove("hidden");
     document.getElementById("resultImg").src = data.strip_url;
     document.getElementById("qrImg").src = data.qr_url;
