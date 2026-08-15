@@ -1,18 +1,45 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Tải ảnh của bạn</title>
+    <title>Download Your Photo</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&display=swap" rel="stylesheet">
     <style>
-        body { text-align: center; background: #0f172a; color: white; font-family: sans-serif; padding: 20px; }
-        img { max-width: 100%; border-radius: 10px; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
-        .btn { display: inline-block; margin-top: 20px; padding: 15px 30px; background: #ff914d; color: white; text-decoration: none; border-radius: 50px; font-weight: bold; }
+        body { 
+            text-align: center; 
+            background: #e0f2fe; /* Light Blue */
+            color: #1e293b; 
+            font-family: 'Montserrat', sans-serif; 
+            padding: 20px; 
+            margin: 0;
+        }
+        h1 { color: #0088cc; font-size: 28px; text-transform: uppercase; }
+        img.strip { 
+            max-width: 90%; 
+            border-radius: 15px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2); 
+            border: 8px solid white;
+            margin-top: 10px;
+        }
+        p { font-weight: bold; margin-top: 20px; color: #64748b; }
+        .btn { 
+            display: inline-block; 
+            margin-top: 25px; 
+            padding: 18px 40px; 
+            background: #ff914d; /* Orange Accent */
+            color: white; 
+            text-decoration: none; 
+            border-radius: 50px; 
+            font-weight: 900; 
+            box-shadow: 0 5px 15px rgba(255, 145, 77, 0.4);
+            text-transform: uppercase;
+        }
     </style>
 </head>
 <body>
-    <h1>Lưu dải ảnh của bạn ✨</h1>
-    <img src="{{ strip_url }}">
-    <p>Nhấn giữ vào ảnh để tải về điện thoại!</p>
-    <a href="/" class="btn">CHỤP LẠI TẤM KHÁC</a>
+    <h1>Save Your Memories ✨</h1>
+    <img src="{{ strip_url }}" class="strip">
+    <p>Long press on the image to save to your phone!</p>
+    <a href="/" class="btn">TAKE ANOTHER ONE</a>
 </body>
 </html>

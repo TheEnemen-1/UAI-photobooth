@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <title>UAI Photobooth | USTH</title>
@@ -14,8 +14,8 @@
 
     <header class="topbar">
         <select id="cameraSelect" class="btn"></select>
-        <button id="btnFlip" class="btn">🔄 Lật Mirror</button>
-        <label class="btn">🖼 Tải Khung PNG <input type="file" id="frameInput" accept="image/png" style="display:none"></label>
+        <button id="btnFlip" class="btn">🔄 Mirror Toggle</button>
+        <label class="btn">🖼 Load PNG Frame <input type="file" id="frameInput" accept="image/png" style="display:none"></label>
     </header>
 
     <main id="cameraStage" class="stage">
@@ -26,21 +26,17 @@
                 <div id="flash" class="flash-effect"></div>
                 <div id="countdown" class="hidden">3</div>
             </div>
-            <div id="statusBadge" class="status-badge">Đang tải trí tuệ nhân tạo...</div>
+            <div id="statusBadge" class="status-badge">Loading AI Engine...</div>
         </div>
 
         <div class="right-panel">
             <div class="thumb-grid">
-                <!-- Vị trí 1 (Dòng 1 cột 1) -->
                 <div id="thumb1" class="thumb-item"></div>
-                <!-- Vị trí 3 (Dòng 1 cột 2) -->
                 <div id="thumb3" class="thumb-item"></div>
-                <!-- Vị trí 2 (Dòng 2 cột 1) -->
                 <div id="thumb2" class="thumb-item"></div>
-                <!-- Vị trí 4 (Dòng 2 cột 2) -->
                 <div id="thumb4" class="thumb-item"></div>
             </div>
-            <p style="text-align: center; color: var(--primary); font-weight: bold;">ẢNH VỪA CHỤP</p>
+            <p style="text-align: center; color: var(--primary); font-weight: bold; text-transform: uppercase;">Recent Captures</p>
         </div>
     </main>
 
@@ -48,10 +44,10 @@
         <img id="resultImg" src="">
         <div class="qr-box">
             <img id="qrImg" src="">
-            <h4>QUÉT QR LẤY ẢNH ✨</h4>
-            <a id="downloadLink" target="_blank" style="color: var(--primary); font-weight: bold; text-decoration: none;">Hoặc bấm vào đây</a>
+            <h4>SCAN QR TO GET PHOTO ✨</h4>
+            <a id="downloadLink" target="_blank" style="color: var(--primary); font-weight: bold; text-decoration: none;">Or click here</a>
             <br><br>
-            <button onclick="location.reload()" class="btn" style="background: var(--accent); color: white; width: 100%; border: none;">CHỤP LẠI</button>
+            <button onclick="location.reload()" class="btn" style="background: var(--accent); color: white; width: 100%; border: none;">RETAKE</button>
         </div>
     </div>
 

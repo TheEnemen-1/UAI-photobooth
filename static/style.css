@@ -1,8 +1,8 @@
 :root {
-    --primary: #0088cc; /* Xanh dương */
-    --light-blue: #e0f2fe; /* Xanh nhạt */
-    --accent: #ff914d;  /* Cam */
-    --bg: #f8fafc;     /* Nền sáng */
+    --primary: #0088cc;
+    --light-blue: #e0f2fe;
+    --accent: #ff914d;
+    --bg: #f8fafc;
 }
 
 body {
@@ -23,7 +23,6 @@ body {
     width: 100%; padding: 10px; display: flex; justify-content: center; gap: 15px; margin-bottom: 20px;
 }
 
-/* Chia màn hình: 3/5 trái, 2/5 phải */
 .stage {
     display: flex; width: 95%; max-width: 1300px; margin: 0 auto; gap: 25px;
 }
@@ -49,11 +48,10 @@ body {
 .do-flash { animation: flash-anim 0.4s ease-out; }
 @keyframes flash-anim { 0% { opacity: 1; } 100% { opacity: 0; } }
 
-/* Lưới ảnh Demo 2x2 */
 .thumb-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr; /* 2 cột */
-    grid-template-rows: 1fr 1fr;    /* 2 hàng */
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
     gap: 15px;
     background: var(--light-blue);
     padding: 20px; border-radius: 20px;

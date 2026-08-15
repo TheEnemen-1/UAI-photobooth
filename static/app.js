@@ -9,7 +9,7 @@ const frameInput = document.getElementById("frameInput");
 const btnFlip = document.getElementById("btnFlip");
 const flashDiv = document.getElementById("flash");
 
-// Âm thanh chụp ảnh
+// Camera shutter sound effect
 const shutterSound = new Audio("https://assets.mixkit.co/active_storage/sfx/2852/2852-preview.mp3");
 
 let handLandmarker;
@@ -17,6 +17,7 @@ let isCapturing = false;
 let gestureStart = null;
 let isMirrored = true;
 
+// Initialize MediaPipe Hand Landmarker and start camera
 async function init() {
     const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm");
     handLandmarker = await HandLandmarker.createFromOptions(vision, {
@@ -31,6 +32,7 @@ async function init() {
     startCamera();
 }
 
+// Toggle mirror effect on video and overlay
 btnFlip.onclick = () => {
     isMirrored = !isMirrored;
     const val = isMirrored ? "scaleX(-1)" : "scaleX(1)";
@@ -38,6 +40,7 @@ btnFlip.onclick = () => {
     canvasElement.style.transform = val;
 };
 
+// Detect available cameras and populate the dropdown menu
 async function setupCameraList() {
     const devices = await navigator.mediaDevices.enumerateDevices();
     devices.filter(d => d.kind === 'videoinput').forEach(d => {
@@ -49,6 +52,7 @@ async function setupCameraList() {
     cameraSelect.onchange = startCamera;
 }
 
+// Start camera stream based on selected device ID
 async function startCamera() {
     const constraints = { video: { deviceId: cameraSelect.value ? { exact: cameraSelect.value } : undefined, width: 1280, height: 720 } };
     const stream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -60,6 +64,7 @@ async function startCamera() {
     };
 }
 
+// Helper function to detect "L-shape" gesture using landmarks
 function isLSelection(landmarks) {
     const wrist = landmarks[0];
     const isThumbExt = Math.hypot(landmarks[4].x - wrist.x, landmarks[4].y - wrist.y) > Math.hypot(landmarks[2].x - wrist.x, landmarks[2].y - wrist.y);
@@ -68,6 +73,7 @@ function isLSelection(landmarks) {
     return isThumbExt && isIndexExt && isOthersCurled;
 }
 
+// Continuous frame processing to detect hands and trigger capture
 async function predict() {
     canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
     if (handLandmarker && !isCapturing) {
@@ -75,10 +81,10 @@ async function predict() {
         const handCount = results.landmarks ? results.landmarks.length : 0;
 
         if (handCount === 0) {
-            statusBadge.innerText = "Giơ 2 tay hình chữ L (Son Heung Min) để chụp! ✋✋";
+            statusBadge.innerText = "Ready! Show 2 hands in L-shape to start ✋✋";
             gestureStart = null;
         } else if (handCount === 1) {
-            statusBadge.innerText = "Đã thấy 1 tay. Giơ thêm tay kia nhé! ✨";
+            statusBadge.innerText = "One hand detected. Show the other hand! ✨";
             gestureStart = null;
         } else {
             const handsL = results.landmarks.filter(isLSelection);
@@ -86,7 +92,7 @@ async function predict() {
                 if (!gestureStart) gestureStart = Date.now();
                 const elapsed = Date.now() - gestureStart;
 
-                // THÊM LẠI KHUNG HIỆU ỨNG NHẬN DIỆN
+                // Recognition highlight frame
                 canvasCtx.strokeStyle = "#ff914d";
                 canvasCtx.lineWidth = 12;
                 canvasCtx.setLineDash([20, 10]);
@@ -94,9 +100,9 @@ async function predict() {
                 canvasCtx.setLineDash([]);
 
                 if (elapsed > 1000) { startPhotoboothFlow(); return; }
-                statusBadge.innerText = `ĐANG NHẬN DIỆN... ${(elapsed/1000).toFixed(1)}s`;
+                statusBadge.innerText = `RECOGNIZING... ${(elapsed/1000).toFixed(1)}s`;
             } else {
-                statusBadge.innerText = "Hãy giơ 2 tay đúng hình chữ L";
+                statusBadge.innerText = "Please show both hands in L-shape";
                 gestureStart = null;
             }
         }
@@ -104,17 +110,17 @@ async function predict() {
     if(!isCapturing) requestAnimationFrame(predict);
 }
 
+// Manage the sequence of capturing 4 photos with countdowns
 async function startPhotoboothFlow() {
     isCapturing = true;
     const photos = [];
     const countdownEl = document.getElementById("countdown");
     
-    // Reset các ô demo ảnh
     for(let j=1; j<=4; j++) document.getElementById(`thumb${j}`).innerHTML = "";
 
     for (let i = 0; i < 4; i++) {
         for (let c = 3; c > 0; c--) {
-            statusBadge.innerText = `CHUẨN BỊ CHỤP TẤM ${i+1}/4`;
+            statusBadge.innerText = `PREPARING PHOTO ${i+1}/4`;
             countdownEl.innerText = c;
             countdownEl.classList.remove("hidden");
             await new Promise(r => setTimeout(r, 1000));
@@ -122,7 +128,7 @@ async function startPhotoboothFlow() {
         
         countdownEl.classList.add("hidden");
         
-        // Hiệu ứng nháy sáng và tiếng kêu
+        // Shutter sound and flash effect
         shutterSound.currentTime = 0;
         shutterSound.play().catch(e => console.log("Audio play failed", e));
         flashDiv.classList.add("do-flash");
@@ -135,8 +141,7 @@ async function startPhotoboothFlow() {
         if (isMirrored) { ctx.translate(capCanvas.width, 0); ctx.scale(-1, 1); }
         ctx.drawImage(video, 0, 0);
         
-        // Đưa ảnh vào lưới demo theo thứ tự 1-3 (trên), 2-4 (dưới)
-        // i=0 -> thumb1, i=1 -> thumb2, i=2 -> thumb3, i=3 -> thumb4
+        // Display thumbnail in the 2x2 grid
         const thumbImg = document.createElement("img");
         thumbImg.src = capCanvas.toDataURL("image/png");
         document.getElementById(`thumb${i+1}`).appendChild(thumbImg);
@@ -148,8 +153,9 @@ async function startPhotoboothFlow() {
     uploadPhotos(photos);
 }
 
+// Send blobs to server, hide camera interface, and show result screen
 async function uploadPhotos(blobs) {
-    statusBadge.innerText = "ĐANG TẠO DẢI ẢNH KỶ NIỆM...";
+    statusBadge.innerText = "CREATING YOUR MEMORIES...";
     const formData = new FormData();
     blobs.forEach((b, i) => formData.append(`photo_${i}`, b));
     if (frameInput.files[0]) formData.append('frame', frameInput.files[0]);
@@ -157,6 +163,8 @@ async function uploadPhotos(blobs) {
     const res = await fetch('/api/save', { method: 'POST', body: formData });
     const data = await res.json();
     
+    // Hide controls and camera stage, show result wrap
+    document.querySelector(".topbar").classList.add("hidden");
     document.getElementById("cameraStage").classList.add("hidden");
     document.getElementById("resultWrap").classList.remove("hidden");
     document.getElementById("resultImg").src = data.strip_url;

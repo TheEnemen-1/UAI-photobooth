@@ -13,6 +13,7 @@ UPLOAD_FOLDER = 'uploads'
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
+# Function to get the local IP address for the QR code link
 def get_lan_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
@@ -24,6 +25,7 @@ def get_lan_ip():
         s.close()
     return ip
 
+# Function to combine 4 photos into a 600x1800 vertical photo strip
 def create_strip(session_dir, photos_count, frame_file=None):
     strip_w, strip_h = 600, 1800
     canvas = Image.new('RGBA', (strip_w, strip_h), (255, 255, 255, 255))
@@ -41,6 +43,7 @@ def create_strip(session_dir, photos_count, frame_file=None):
             y_offset = start_y + i * (img_h + gap)
             canvas.paste(img, (padding_x, y_offset))
     
+    # If a custom frame is uploaded, overlay it on top of the strip
     if frame_file:
         try:
             frame_img = Image.open(frame_file).convert("RGBA")
@@ -52,10 +55,12 @@ def create_strip(session_dir, photos_count, frame_file=None):
     canvas.convert("RGB").save(final_path)
     return 'final_strip.png'
 
+# Route to serve the main photobooth page
 @app.route('/')
 def index():
     return render_template('index.html')
 
+# API Route to save uploaded photos and generate the final strip + QR code
 @app.route('/api/save', methods=['POST'])
 def save_photos():
     session_id = str(uuid4())
@@ -81,15 +86,17 @@ def save_photos():
         "qr_url": f"/get_upload/{session_id}/qr.png"
     })
 
+# Route to serve specific uploaded files (photos/QR)
 @app.route('/get_upload/<session_id>/<filename>')
 def get_upload(session_id, filename):
     return send_from_directory(os.path.join(UPLOAD_FOLDER, session_id), filename)
 
+# Route for the mobile-friendly download page
 @app.route('/download/<session_id>')
 def download_page(session_id):
     strip_url = f"/get_upload/{session_id}/final_strip.png"
     return render_template('download.html', strip_url=strip_url)
 
 if __name__ == '__main__':
-    print(f"TRUY CẬP TẠI: http://{get_lan_ip()}:5000")
+    print(f"ACCESS AT: http://{get_lan_ip()}:5000")
     app.run(host='0.0.0.0', port=5000)
