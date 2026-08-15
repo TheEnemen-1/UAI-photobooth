@@ -63,16 +63,13 @@ def save_photos():
     os.makedirs(session_dir)
 
     frame_file = request.files.get('frame')
-    
     for i in range(4):
         file = request.files.get(f'photo_{i}')
         if file:
             temp_path = os.path.join(session_dir, f'photo_{i}.png')
             file.save(temp_path)
-            # KHÔNG DÙNG FILTER NỮA - ĐỂ NGUYÊN MÀU GỐC
 
     strip_filename = create_strip(session_dir, 4, frame_file)
-
     lan_ip = get_lan_ip()
     download_url = f"http://{lan_ip}:5000/download/{session_id}"
     qr = qrcode.make(download_url)

@@ -8,10 +8,9 @@ const cameraSelect = document.getElementById("cameraSelect");
 const frameInput = document.getElementById("frameInput");
 const btnFlip = document.getElementById("btnFlip");
 const flashDiv = document.getElementById("flash");
-const thumbList = document.getElementById("thumbList");
 
-// Tạo âm thanh chụp ảnh
-const shutterSound = new Audio("https://cdn.pixabay.com/audio/2022/03/15/audio_5106518731.mp3");
+// Âm thanh chụp ảnh
+const shutterSound = new Audio("https://assets.mixkit.co/active_storage/sfx/2852/2852-preview.mp3");
 
 let handLandmarker;
 let isCapturing = false;
@@ -76,7 +75,7 @@ async function predict() {
         const handCount = results.landmarks ? results.landmarks.length : 0;
 
         if (handCount === 0) {
-            statusBadge.innerText = "Sẵn sàng nhận diện chữ L (Son Heung Min) để chụp! ✋✋";
+            statusBadge.innerText = "Giơ 2 tay hình chữ L (Son Heung Min) để chụp! ✋✋";
             gestureStart = null;
         } else if (handCount === 1) {
             statusBadge.innerText = "Đã thấy 1 tay. Giơ thêm tay kia nhé! ✨";
@@ -86,10 +85,18 @@ async function predict() {
             if (handsL.length >= 2) {
                 if (!gestureStart) gestureStart = Date.now();
                 const elapsed = Date.now() - gestureStart;
+
+                // THÊM LẠI KHUNG HIỆU ỨNG NHẬN DIỆN
+                canvasCtx.strokeStyle = "#ff914d";
+                canvasCtx.lineWidth = 12;
+                canvasCtx.setLineDash([20, 10]);
+                canvasCtx.strokeRect(40, 40, canvasElement.width - 80, canvasElement.height - 80);
+                canvasCtx.setLineDash([]);
+
                 if (elapsed > 1000) { startPhotoboothFlow(); return; }
-                statusBadge.innerText = `GIỮ NGUYÊN... ${(elapsed/1000).toFixed(1)}s`;
+                statusBadge.innerText = `ĐANG NHẬN DIỆN... ${(elapsed/1000).toFixed(1)}s`;
             } else {
-                statusBadge.innerText = "Giơ 2 tay hình chữ L để chụp";
+                statusBadge.innerText = "Hãy giơ 2 tay đúng hình chữ L";
                 gestureStart = null;
             }
         }
@@ -100,8 +107,10 @@ async function predict() {
 async function startPhotoboothFlow() {
     isCapturing = true;
     const photos = [];
-    thumbList.innerHTML = ""; // Xóa ảnh cũ
     const countdownEl = document.getElementById("countdown");
+    
+    // Reset các ô demo ảnh
+    for(let j=1; j<=4; j++) document.getElementById(`thumb${j}`).innerHTML = "";
 
     for (let i = 0; i < 4; i++) {
         for (let c = 3; c > 0; c--) {
@@ -111,10 +120,12 @@ async function startPhotoboothFlow() {
             await new Promise(r => setTimeout(r, 1000));
         }
         
-        // HIỆU ỨNG CHỤP ẢNH
         countdownEl.classList.add("hidden");
-        shutterSound.play(); // Tiếng tách
-        flashDiv.classList.add("do-flash"); // Nháy sáng
+        
+        // Hiệu ứng nháy sáng và tiếng kêu
+        shutterSound.currentTime = 0;
+        shutterSound.play().catch(e => console.log("Audio play failed", e));
+        flashDiv.classList.add("do-flash");
         setTimeout(() => flashDiv.classList.remove("do-flash"), 400);
         
         const capCanvas = document.createElement("canvas");
@@ -124,23 +135,21 @@ async function startPhotoboothFlow() {
         if (isMirrored) { ctx.translate(capCanvas.width, 0); ctx.scale(-1, 1); }
         ctx.drawImage(video, 0, 0);
         
-        // Hiện ảnh demo sang bên phải
-        const thumbDiv = document.createElement("div");
-        thumbDiv.className = "thumb-item";
+        // Đưa ảnh vào lưới demo theo thứ tự 1-3 (trên), 2-4 (dưới)
+        // i=0 -> thumb1, i=1 -> thumb2, i=2 -> thumb3, i=3 -> thumb4
         const thumbImg = document.createElement("img");
         thumbImg.src = capCanvas.toDataURL("image/png");
-        thumbDiv.appendChild(thumbImg);
-        thumbList.appendChild(thumbDiv);
+        document.getElementById(`thumb${i+1}`).appendChild(thumbImg);
 
         const blob = await new Promise(res => capCanvas.toBlob(res, 'image/png'));
         photos.push(blob);
-        await new Promise(r => setTimeout(r, 500)); // Nghỉ ngắn giữa các tấm
+        await new Promise(r => setTimeout(r, 600)); 
     }
     uploadPhotos(photos);
 }
 
 async function uploadPhotos(blobs) {
-    statusBadge.innerText = "ĐANG XỬ LÝ DẢI ẢNH...";
+    statusBadge.innerText = "ĐANG TẠO DẢI ẢNH KỶ NIỆM...";
     const formData = new FormData();
     blobs.forEach((b, i) => formData.append(`photo_${i}`, b));
     if (frameInput.files[0]) formData.append('frame', frameInput.files[0]);
