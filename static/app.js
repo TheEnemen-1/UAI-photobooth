@@ -76,15 +76,17 @@ function isLSelection(landmarks) {
 // Continuous frame processing to detect hands and trigger capture
 async function predict() {
     canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+    
+    // Only process recognition if not currently in a capture sequence
     if (handLandmarker && !isCapturing) {
         const results = await handLandmarker.detectForVideo(video, performance.now());
         const handCount = results.landmarks ? results.landmarks.length : 0;
 
         if (handCount === 0) {
-            statusBadge.innerText = "Ready! Show 2 hands in L-shape to start ✋✋";
+            statusBadge.innerText = "Two-hand camera pose to start! 👇👆";
             gestureStart = null;
         } else if (handCount === 1) {
-            statusBadge.innerText = "One hand detected. Show the other hand! ✨";
+            statusBadge.innerText = "One hand detected. Show the other! ✋";
             gestureStart = null;
         } else {
             const handsL = results.landmarks.filter(isLSelection);
@@ -92,22 +94,26 @@ async function predict() {
                 if (!gestureStart) gestureStart = Date.now();
                 const elapsed = Date.now() - gestureStart;
 
-                // Recognition highlight frame
-                canvasCtx.strokeStyle = "#ff914d";
-                canvasCtx.lineWidth = 12;
-                canvasCtx.setLineDash([20, 10]);
-                canvasCtx.strokeRect(40, 40, canvasElement.width - 80, canvasElement.height - 80);
-                canvasCtx.setLineDash([]);
-
-                if (elapsed > 1000) { startPhotoboothFlow(); return; }
-                statusBadge.innerText = `RECOGNIZING... ${(elapsed/1000).toFixed(1)}s`;
+                if (elapsed > 1000) {
+                    gestureStart = null;
+                    startPhotoboothFlow();
+                } else {
+                    // Recognition highlight frame - Only drawn during the 1-second holding period
+                    canvasCtx.strokeStyle = "#ff914d";
+                    canvasCtx.lineWidth = 12;
+                    canvasCtx.setLineDash([20, 10]);
+                    canvasCtx.strokeRect(40, 40, canvasElement.width - 80, canvasElement.height - 80);
+                    canvasCtx.setLineDash([]);
+                    statusBadge.innerText = `RECOGNIZING... ${(elapsed/1000).toFixed(1)}s`;
+                }
             } else {
-                statusBadge.innerText = "Please show both hands in L-shape";
+                statusBadge.innerText = "Please show both hands in L-shape (Son Heung-min) 👐";
                 gestureStart = null;
             }
         }
     }
-    if(!isCapturing) requestAnimationFrame(predict);
+    // Always keep the loop running to ensure clear canvas when shooting
+    requestAnimationFrame(predict);
 }
 
 // Manage the sequence of capturing 4 photos with countdowns
@@ -120,7 +126,7 @@ async function startPhotoboothFlow() {
 
     for (let i = 0; i < 4; i++) {
         for (let c = 3; c > 0; c--) {
-            statusBadge.innerText = `PREPARING PHOTO ${i+1}/4`;
+            statusBadge.innerText = `PREPARING PHOTO ${i+1}/4... 🌟`;
             countdownEl.innerText = c;
             countdownEl.classList.remove("hidden");
             await new Promise(r => setTimeout(r, 1000));
