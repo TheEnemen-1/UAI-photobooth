@@ -30,19 +30,21 @@ def create_strip(session_dir, photos_count, frame_file=None):
     strip_w, strip_h = 600, 1800
     canvas = Image.new('RGBA', (strip_w, strip_h), (255, 255, 255, 255))
     
-    img_w, img_h = 540, 400
+    # Adjusted to 16:9 ratio to match camera (540 / 304 ≈ 1.77)
+    img_w, img_h = 540, 304 
     padding_x = 30
-    start_y = 40
-    gap = 25
+    start_y = 60 # Lowered slightly for better top margin
+    gap = 60     # Increased gap for a more balanced look
     
     for i in range(photos_count):
         img_path = os.path.join(session_dir, f'photo_{i}.png')
         if os.path.exists(img_path):
             img = Image.open(img_path).convert("RGBA")
+            # This ensures the resized image maintains the 16:9 look
             img = img.resize((img_w, img_h), Image.Resampling.LANCZOS)
             y_offset = start_y + i * (img_h + gap)
             canvas.paste(img, (padding_x, y_offset))
-    
+
     # If a custom frame is uploaded, overlay it on top of the strip
     if frame_file:
         try:
