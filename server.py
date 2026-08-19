@@ -13,6 +13,12 @@ UPLOAD_FOLDER = 'uploads'
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
+# ==========================================================================
+# CLOUDFLARE SETTING: Paste your link here
+# Keep it empty "" if you want to use local Wi-Fi IP
+PUBLIC_URL = "https://researchers-where-significant-kenny.trycloudflare.com"
+# ==========================================================================
+
 # Function to get the local IP address for the QR code link
 def get_lan_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -27,7 +33,7 @@ def get_lan_ip():
 
 # Function to combine 4 photos into a 600x1800 vertical photo strip
 def create_strip(session_dir, photos_count, frame_file=None):
-    strip_w, strip_h = 600, 1800
+    strip_w, strip_h = 600, 1800 
     canvas = Image.new('RGBA', (strip_w, strip_h), (255, 255, 255, 255))
     
     # Adjusted to 16:9 ratio to match camera (540 / 304 ≈ 1.77)
@@ -77,8 +83,16 @@ def save_photos():
             file.save(temp_path)
 
     strip_filename = create_strip(session_dir, 4, frame_file)
-    lan_ip = get_lan_ip()
-    download_url = f"http://{lan_ip}:5000/download/{session_id}"
+    
+    # --- LOGIC SELECTION FOR QR CODE LINK ---
+    if PUBLIC_URL:
+        # Use Cloudflare link if provided
+        download_url = f"{PUBLIC_URL.rstrip('/')}/download/{session_id}"
+    else:
+        # Default to local LAN IP
+        lan_ip = get_lan_ip()
+        download_url = f"http://{lan_ip}:5000/download/{session_id}"
+    
     qr = qrcode.make(download_url)
     qr.save(os.path.join(session_dir, 'qr.png'))
 
@@ -101,4 +115,6 @@ def download_page(session_id):
 
 if __name__ == '__main__':
     print(f"ACCESS AT: http://{get_lan_ip()}:5000")
+    if PUBLIC_URL:
+        print(f"PUBLIC ACCESS AT: {PUBLIC_URL}")
     app.run(host='0.0.0.0', port=5000)
