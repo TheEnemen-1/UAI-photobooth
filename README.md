@@ -51,7 +51,7 @@ pip install -r requirements.txt
 To allow phones to scan the QR code and download photos (even when not on the same Wi-Fi):
 1. Open a terminal in the project folder and run:
    ```bash
-   cloudflared.exe tunnel --url http://localhost:5000
+   .\cloudflared.exe tunnel --url http://localhost:5000
    ```
 2. Look for the link ending in `.trycloudflare.com` (e.g., `https://abc-xyz.trycloudflare.com`).
 3. Open `server.py` and paste this link into the `PUBLIC_URL` variable:

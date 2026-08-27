@@ -18,7 +18,7 @@ if not os.path.exists(UPLOAD_FOLDER):
 # ==========================================================================
 # CLOUDFLARE SETTING: Paste your link here
 # Keep it empty "" if you want to use local Wi-Fi IP
-PUBLIC_URL = "https://researchers-where-significant-kenny.trycloudflare.com"
+PUBLIC_URL = "https://fool-butterfly-ripe-decorative.trycloudflare.com"
 # ==========================================================================
 
 # In-process cache for frame analysis results, keyed by (absolute_path, mtime)
@@ -105,6 +105,18 @@ def analyze_frame(path):
                 # Filter out too narrow artifacts
                 if (x1 - x0) > 50:
                     slots.append({"x": x0, "y": y0, "w": x1 - x0, "h": y1 - y0})
+
+    if not slots:
+        # Fallback: create 4 equal vertical slots if transparent cutouts could not be detected automatically
+        margin_x = int(frame_w * 0.05)
+        margin_y = int(frame_h * 0.03)
+        slot_w = frame_w - 2 * margin_x
+        available_h = frame_h - 2 * margin_y
+        gap = int(available_h * 0.03)
+        slot_h = (available_h - 3 * gap) // 4
+        for i in range(4):
+            sy = margin_y + i * (slot_h + gap)
+            slots.append({"x": margin_x, "y": sy, "w": slot_w, "h": slot_h})
 
     result = {"frame_w": frame_w, "frame_h": frame_h, "slots": slots}
     _frame_meta_cache[cache_key] = result
