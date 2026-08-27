@@ -71,10 +71,10 @@ def analyze_frame(path):
     frame_w, frame_h = img.size
     alpha = np.array(img)[:, :, 3]
 
-    THRESH     = 30    # pixel is "transparent" if alpha < THRESH
-    ROW_RATIO  = 0.25  # fraction of transparent pixels to classify a row as cutout
-    COL_RATIO  = 0.25  # same for columns within each band
-    BAND_GAP   = 5     # max gap (rows) allowed within a single band
+    THRESH     = 50    # pixel is "transparent" if alpha < THRESH
+    ROW_RATIO  = 0.08  # fraction of transparent pixels to classify a row as cutout (handles large character overlays)
+    COL_RATIO  = 0.15  # same for columns within each band
+    BAND_GAP   = 15    # max gap (rows) allowed within a single band
 
     transparent_rows = np.where((alpha < THRESH).mean(axis=1) > ROW_RATIO)[0]
 
