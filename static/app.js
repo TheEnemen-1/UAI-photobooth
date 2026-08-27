@@ -7,6 +7,7 @@ const statusBadge = document.getElementById("statusBadge");
 const cameraSelect = document.getElementById("cameraSelect");
 const frameInput = document.getElementById("frameInput");
 const btnFlip = document.getElementById("btnFlip");
+const btnRefresh = document.getElementById("btnRefresh");
 const flashDiv = document.getElementById("flash");
 
 // Camera shutter sound effect
@@ -16,20 +17,50 @@ let handLandmarker;
 let isCapturing = false;
 let gestureStart = null;
 let isMirrored = true;
+let currentStream = null;
+let isPredicting = false;
 
 // Initialize MediaPipe Hand Landmarker and start camera
 async function init() {
-    const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm");
-    handLandmarker = await HandLandmarker.createFromOptions(vision, {
-        baseOptions: {
-            modelAssetPath: "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
-            delegate: "GPU"
-        },
-        runningMode: "VIDEO", numHands: 2
-    });
+    statusBadge.innerText = "Initializing AI Engine & Cameras...";
+    try {
+        const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm");
+        handLandmarker = await HandLandmarker.createFromOptions(vision, {
+            baseOptions: {
+                modelAssetPath: "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
+                delegate: "GPU"
+            },
+            runningMode: "VIDEO", numHands: 2
+        });
+    } catch (e) {
+        console.error("MediaPipe initialization error:", e);
+    }
     
-    setupCameraList();
-    startCamera();
+    // First, request camera permission if not granted yet
+    try {
+        const initialStream = await navigator.mediaDevices.getUserMedia({ video: true });
+        initialStream.getTracks().forEach(track => track.stop());
+    } catch (err) {
+        console.warn("Permission request error:", err);
+    }
+
+    await setupCameraList();
+    await startCamera();
+
+    if (btnRefresh) {
+        btnRefresh.onclick = async () => {
+            statusBadge.innerText = "Scanning camera devices...";
+            await setupCameraList();
+            await startCamera();
+        };
+    }
+
+    // Re-populate list automatically when cameras are plugged/unplugged
+    if (navigator.mediaDevices && navigator.mediaDevices.ondevicechange !== undefined) {
+        navigator.mediaDevices.ondevicechange = async () => {
+            await setupCameraList();
+        };
+    }
 }
 
 // Toggle mirror effect on video and overlay
@@ -42,25 +73,125 @@ btnFlip.onclick = () => {
 
 // Detect available cameras and populate the dropdown menu
 async function setupCameraList() {
-    const devices = await navigator.mediaDevices.enumerateDevices();
-    devices.filter(d => d.kind === 'videoinput').forEach(d => {
-        const opt = document.createElement("option");
-        opt.value = d.deviceId;
-        opt.text = d.label || `Camera ${cameraSelect.length + 1}`;
-        cameraSelect.appendChild(opt);
-    });
-    cameraSelect.onchange = startCamera;
+    try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoDevices = devices.filter(d => d.kind === 'videoinput');
+        
+        const previousVal = cameraSelect.value;
+        cameraSelect.innerHTML = "";
+        
+        let eosDeviceId = null;
+
+        videoDevices.forEach((d, idx) => {
+            const opt = document.createElement("option");
+            opt.value = d.deviceId;
+            const label = d.label || `Camera ${idx + 1}`;
+            opt.text = label;
+            cameraSelect.appendChild(opt);
+
+            // Match EOS Webcam Utility / Canon
+            const labelLower = label.toLowerCase();
+            if (labelLower.includes("eos") || labelLower.includes("canon") || labelLower.includes("webcam utility")) {
+                eosDeviceId = d.deviceId;
+            }
+        });
+
+        if (videoDevices.length === 0) {
+            const opt = document.createElement("option");
+            opt.value = "";
+            opt.text = "No cameras detected";
+            cameraSelect.appendChild(opt);
+        } else {
+            // Keep previous selection if valid, otherwise auto-select EOS camera if found
+            if (previousVal && [...cameraSelect.options].some(o => o.value === previousVal)) {
+                cameraSelect.value = previousVal;
+            } else if (eosDeviceId) {
+                cameraSelect.value = eosDeviceId;
+            }
+        }
+        
+        cameraSelect.onchange = () => startCamera();
+    } catch (err) {
+        console.error("Error setting up camera list:", err);
+    }
 }
 
 // Start camera stream based on selected device ID
 async function startCamera() {
-    const constraints = { video: { deviceId: cameraSelect.value ? { exact: cameraSelect.value } : undefined, width: 1280, height: 720 } };
-    const stream = await navigator.mediaDevices.getUserMedia(constraints);
-    video.srcObject = stream;
+    // Stop any existing stream tracks to release hardware
+    if (currentStream) {
+        currentStream.getTracks().forEach(track => track.stop());
+        currentStream = null;
+    }
+
+    const targetDeviceId = cameraSelect.value;
+    const selectedText = cameraSelect.options[cameraSelect.selectedIndex]?.text || "";
+
+    // Array of fallback constraint strategies
+    const constraintAttempts = [];
+
+    if (targetDeviceId) {
+        // Strategy 1: Ideal device ID with ideal resolution (DO NOT use 'exact' which breaks virtual DirectShow webcams)
+        constraintAttempts.push({
+            video: {
+                deviceId: { ideal: targetDeviceId },
+                width: { ideal: 1280 },
+                height: { ideal: 720 }
+            }
+        });
+        // Strategy 2: Exact device ID with no width/height requirement
+        constraintAttempts.push({
+            video: { deviceId: { exact: targetDeviceId } }
+        });
+        // Strategy 3: Loose device ID match
+        constraintAttempts.push({
+            video: { deviceId: targetDeviceId }
+        });
+    }
+
+    // Strategy 4 & 5: Generic fallbacks
+    constraintAttempts.push({ video: { width: { ideal: 1280 }, height: { ideal: 720 } } });
+    constraintAttempts.push({ video: true });
+
+    let activeStream = null;
+    let lastError = null;
+
+    for (const constraints of constraintAttempts) {
+        try {
+            activeStream = await navigator.mediaDevices.getUserMedia(constraints);
+            if (activeStream) break;
+        } catch (err) {
+            lastError = err;
+        }
+    }
+
+    if (!activeStream) {
+        statusBadge.innerText = `⚠️ Camera Access Error: ${lastError ? lastError.message : "Device unavailable"}`;
+        return;
+    }
+
+    currentStream = activeStream;
+    video.srcObject = activeStream;
+    try {
+        await video.play();
+    } catch (e) {
+        console.warn("Video play error:", e);
+    }
+
     video.onloadedmetadata = () => {
-        canvasElement.width = video.videoWidth;
-        canvasElement.height = video.videoHeight;
-        predict();
+        canvasElement.width = video.videoWidth || 1280;
+        canvasElement.height = video.videoHeight || 720;
+        
+        if (selectedText.toLowerCase().includes("eos") || selectedText.toLowerCase().includes("canon")) {
+            statusBadge.innerText = "Connected to EOS Webcam Utility! (Ensure camera is in Movie Mode) 📸";
+        } else {
+            statusBadge.innerText = "Camera connected! Show two-hand L-shape to start ✨";
+        }
+
+        if (!isPredicting) {
+            isPredicting = true;
+            predict();
+        }
     };
 }
 
@@ -122,11 +253,16 @@ async function startPhotoboothFlow() {
     const photos = [];
     const countdownEl = document.getElementById("countdown");
     
+    // NEW: Get the countdown duration from the select element
+    const timerSelect = document.getElementById("timerSelect");
+    const countdownDuration = parseInt(timerSelect.value) || 3;
+
     for(let j=1; j<=4; j++) document.getElementById(`thumb${j}`).innerHTML = "";
 
     for (let i = 0; i < 4; i++) {
-        for (let c = 3; c > 0; c--) {
-            statusBadge.innerText = `PREPARING PHOTO ${i+1}/4... 🌟`;
+        // Use the dynamic countdownDuration instead of hardcoded 3
+        for (let c = countdownDuration; c > 0; c--) {
+            statusBadge.innerText = `PREPARING PHOTO ${i+1}/4`;
             countdownEl.innerText = c;
             countdownEl.classList.remove("hidden");
             await new Promise(r => setTimeout(r, 1000));

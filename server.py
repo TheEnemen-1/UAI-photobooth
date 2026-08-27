@@ -16,7 +16,7 @@ if not os.path.exists(UPLOAD_FOLDER):
 # ==========================================================================
 # CLOUDFLARE SETTING: Paste your link here
 # Keep it empty "" if you want to use local Wi-Fi IP
-PUBLIC_URL = "https://researchers-where-significant-kenny.trycloudflare.com"
+PUBLIC_URL = "https://strip-signature-aircraft-forwarding.trycloudflare.com"
 # ==========================================================================
 
 # Function to get the local IP address for the QR code link

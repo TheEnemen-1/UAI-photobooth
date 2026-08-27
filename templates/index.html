@@ -7,15 +7,30 @@
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&display=swap" rel="stylesheet">
 </head>
 <body>
+    <!-- Vertical side mottos -->
+    <div class="motto motto-left">say cheese!</div>
+    <div class="motto motto-right">siuuuuuuuu!</div>
+
     <div class="header-brand">
-        <h1>📸 UAI photobooth</h1>
-        <p>Creating memories at USTH</p>
+        <h1>UAI photobooth</h1>
+        <p>creating memories at USTH</p>
     </div>
 
     <header class="topbar">
         <select id="cameraSelect" class="btn"></select>
-        <button id="btnFlip" class="btn">🔄 Flip Camera</button>
-        <label class="btn">Load Frame <input type="file" id="frameInput" accept="image/png" style="display:none"></label>
+        <button id="btnRefresh" class="btn">🔍 Detect Cameras</button>
+        <button id="btnFlip" class="btn">🔄 Mirror Toggle</button>
+
+        <!-- Timer Selection for capture delay -->
+        <label class="btn">⏱ Timer:
+            <select id="timerSelect" style="border:none; background:transparent; font-weight:bold; color:inherit; cursor:pointer;">
+                <option value="3">3s</option>
+                <option value="5">5s</option>
+                <option value="7">7s</option>
+            </select>
+        </label>
+
+        <label class="btn">🖼 Load PNG Frame <input type="file" id="frameInput" accept="image/png" style="display:none"></label>
     </header>
 
     <main id="cameraStage" class="stage">
