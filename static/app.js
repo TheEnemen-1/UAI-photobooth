@@ -17,6 +17,11 @@ const btnCloseFramePicker = document.getElementById("btnCloseFramePicker");
 const btnClearFrame       = document.getElementById("btnClearFrame");
 const btnConfirmFrame     = document.getElementById("btnConfirmFrame");
 
+// Live Strip Preview
+const stripPreviewCanvas  = document.getElementById("stripPreviewCanvas");
+const stripPreviewCtx     = stripPreviewCanvas ? stripPreviewCanvas.getContext("2d") : null;
+let capturedStripCanvases = [];
+
 // ── Frame / slot state ───────────────────────────────────────────────────────
 let selectedFrameName = null;   // confirmed frame filename
 let pendingFrameName  = null;   // selection inside open modal (not yet confirmed)
@@ -36,7 +41,11 @@ let currentSlotIndex = 0;       // which slot we're capturing during a session
 const debugMode = new URLSearchParams(location.search).has('debug');
 
 // ── Audio ────────────────────────────────────────────────────────────────────
-const shutterSound = new Audio("https://assets.mixkit.co/active_storage/sfx/2852/2852-preview.mp3");
+const shutterSound = new Audio("/static/iphone-cam-sound.mp3");
+shutterSound.onerror = () => {
+    // Fallback if local file not found
+    shutterSound.src = "https://assets.mixkit.co/active_storage/sfx/2852/2852-preview.mp3";
+};
 
 // ── MediaPipe state ──────────────────────────────────────────────────────────
 let handLandmarker;
@@ -60,6 +69,7 @@ async function init() {
 
     setupCameraList();
     startCamera();
+    renderStripPreview([]);
 
     if (debugMode) {
         statusBadge.style.background = '#9333ea';
@@ -73,7 +83,6 @@ btnFlip.onclick = () => {
     isMirrored = !isMirrored;
     const val = isMirrored ? "scaleX(-1)" : "scaleX(1)";
     video.style.transform        = val;
-    canvasElement.style.transform = val;
 };
 
 async function setupCameraList() {
@@ -177,6 +186,7 @@ btnClearFrame.onclick = () => {
     slotGuideTarget   = null;
     slotGuideCurrent  = null;
     currentSlotIndex  = 0;
+    capturedStripCanvases = [];
     btnSelectFrame.textContent = '🖼️ Select Frame';
 
     const container = document.querySelector(".camera-container");
@@ -187,6 +197,7 @@ btnClearFrame.onclick = () => {
             container.style.setProperty("--cam-aspect", "16 / 9");
         }
     }
+    renderStripPreview([]);
     closeFramePicker();
 };
 
@@ -198,6 +209,7 @@ btnConfirmFrame.onclick = async () => {
     slotGuideTarget  = null;
     slotGuideCurrent = null;
     currentSlotIndex = 0;
+    capturedStripCanvases = [];
 
     if (selectedFrameName) {
         const short = selectedFrameName.replace(/\.[^.]+$/, '');
@@ -213,12 +225,16 @@ btnConfirmFrame.onclick = async () => {
 
         // Preload the frame image so drawFrameOverlay() can draw it immediately
         frameImg     = new Image();
+        frameImg.onload = () => {
+            renderStripPreview([]);
+        };
         frameImg.src = `/frames/${encodeURIComponent(selectedFrameName)}`;
 
         // Animate the first slot guide into position
         if (frameMeta?.slots?.length) {
             setSlotGuide(0, false); // appear without animation from a previous guide
         }
+        renderStripPreview([]);
     } else {
         btnSelectFrame.textContent = '🖼️ Select Frame';
         const container = document.querySelector(".camera-container");
@@ -229,6 +245,7 @@ btnConfirmFrame.onclick = async () => {
                 container.style.setProperty("--cam-aspect", "16 / 9");
             }
         }
+        renderStripPreview([]);
     }
 
     closeFramePicker();
@@ -369,7 +386,7 @@ function drawFrameOverlay() {
     canvasCtx.setLineDash([]);
 
     canvasCtx.fillStyle = 'rgba(255, 145, 77, 0.9)';
-    canvasCtx.font      = 'bold 16px Montserrat, sans-serif';
+    canvasCtx.font      = 'bold 16px "Share Tech", sans-serif';
     canvasCtx.fillText(
         `Slot ${currentSlotIndex + 1}/${frameMeta.slots.length}  |  crop guide`,
         cur.cropX + 10,
@@ -391,25 +408,145 @@ function drawFrameOverlay() {
         canvasCtx.setLineDash([]);
 
         canvasCtx.fillStyle = isActive ? '#ff914d' : '#0088cc';
-        canvasCtx.font      = `bold ${isActive ? 14 : 12}px Montserrat, sans-serif`;
+        canvasCtx.font      = `bold ${isActive ? 14 : 12}px "Share Tech", sans-serif`;
         canvasCtx.fillText(`${i + 1}`, sx + 5, sy + 17);
     });
 
     canvasCtx.restore();
 }
 
+// ── Live Strip Preview (Right Panel) ─────────────────────────────────────────
+function renderStripPreview(capturedList = capturedStripCanvases) {
+    if (!stripPreviewCanvas || !stripPreviewCtx) return;
+
+    if (frameImg && frameImg.complete && frameMeta?.slots?.length) {
+        const stripW = frameMeta.frame_w || 600;
+        const stripH = frameMeta.frame_h || 1800;
+        stripPreviewCanvas.width  = stripW;
+        stripPreviewCanvas.height = stripH;
+
+        // Solid clean white canvas base
+        stripPreviewCtx.fillStyle = "#ffffff";
+        stripPreviewCtx.fillRect(0, 0, stripW, stripH);
+
+        // Render slots
+        const slots = frameMeta.slots;
+        slots.slice(0, 4).forEach((slot, i) => {
+            if (capturedList[i]) {
+                // Draw captured photo in slot
+                stripPreviewCtx.drawImage(capturedList[i], slot.x, slot.y, slot.w, slot.h);
+            } else {
+                // Empty placeholder slot
+                stripPreviewCtx.fillStyle = "#f1f5f9";
+                stripPreviewCtx.fillRect(slot.x, slot.y, slot.w, slot.h);
+
+                // Subtle outline & slot label
+                stripPreviewCtx.strokeStyle = "#cbd5e1";
+                stripPreviewCtx.lineWidth = 4;
+                stripPreviewCtx.setLineDash([12, 8]);
+                stripPreviewCtx.strokeRect(slot.x + 4, slot.y + 4, slot.w - 8, slot.h - 8);
+                stripPreviewCtx.setLineDash([]);
+
+                stripPreviewCtx.fillStyle = "#94a3b8";
+                stripPreviewCtx.font = 'bold 38px "Changa One", sans-serif';
+                stripPreviewCtx.textAlign = 'center';
+                stripPreviewCtx.textBaseline = 'middle';
+                stripPreviewCtx.fillText(`Photo ${i + 1}`, slot.x + slot.w / 2, slot.y + slot.h / 2);
+            }
+        });
+
+        // Overlay frame design on top
+        stripPreviewCtx.drawImage(frameImg, 0, 0, stripW, stripH);
+
+    } else {
+        // Default strip layout (no frame selected)
+        const stripW = 600;
+        const stripH = 1800;
+        stripPreviewCanvas.width  = stripW;
+        stripPreviewCanvas.height = stripH;
+
+        stripPreviewCtx.fillStyle = "#ffffff";
+        stripPreviewCtx.fillRect(0, 0, stripW, stripH);
+
+        const img_w = 540;
+        const img_h = 304;
+        const padding_x = 30;
+        const start_y   = 60;
+        const gap       = 60;
+
+        for (let i = 0; i < 4; i++) {
+            const slotX = padding_x;
+            const slotY = start_y + i * (img_h + gap);
+
+            if (capturedList[i]) {
+                stripPreviewCtx.drawImage(capturedList[i], slotX, slotY, img_w, img_h);
+            } else {
+                stripPreviewCtx.fillStyle = "#f1f5f9";
+                stripPreviewCtx.fillRect(slotX, slotY, img_w, img_h);
+
+                stripPreviewCtx.strokeStyle = "#cbd5e1";
+                stripPreviewCtx.lineWidth = 4;
+                stripPreviewCtx.setLineDash([12, 8]);
+                stripPreviewCtx.strokeRect(slotX, slotY, img_w, img_h);
+                stripPreviewCtx.setLineDash([]);
+
+                stripPreviewCtx.fillStyle = "#94a3b8";
+                stripPreviewCtx.font = 'bold 38px "Changa One", sans-serif';
+                stripPreviewCtx.textAlign = 'center';
+                stripPreviewCtx.textBaseline = 'middle';
+                stripPreviewCtx.fillText(`Photo ${i + 1}`, slotX + img_w / 2, slotY + img_h / 2);
+            }
+        }
+
+        // Bottom label
+        stripPreviewCtx.fillStyle = "#0088cc";
+        stripPreviewCtx.font = 'bold 32px "Changa One", sans-serif';
+        stripPreviewCtx.textAlign = 'center';
+        stripPreviewCtx.textBaseline = 'alphabetic';
+        stripPreviewCtx.fillText("UAI PHOTOBOOTH", stripW / 2, stripH - 30);
+    }
+}
+
 // ── Gesture detection ─────────────────────────────────────────────────────────
 function isLSelection(landmarks) {
+    const dist = (p1, p2) => Math.hypot(p1.x - p2.x, p1.y - p2.y);
     const wrist = landmarks[0];
-    const isThumbExt     = Math.hypot(landmarks[4].x - wrist.x, landmarks[4].y - wrist.y) >
-                           Math.hypot(landmarks[2].x - wrist.x, landmarks[2].y - wrist.y);
-    const isIndexExt     = Math.hypot(landmarks[8].x - wrist.x, landmarks[8].y - wrist.y) >
-                           Math.hypot(landmarks[6].x - wrist.x, landmarks[6].y - wrist.y);
-    const isOthersCurled = [12, 16, 20].every(i =>
-        Math.hypot(landmarks[i].x - wrist.x, landmarks[i].y - wrist.y) <
-        Math.hypot(landmarks[i - 2].x - wrist.x, landmarks[i - 2].y - wrist.y)
-    );
-    return isThumbExt && isIndexExt && isOthersCurled;
+
+    // 1. Index finger is extended
+    // Tip (8) further from wrist (0) than PIP (6)
+    const isIndexExt = dist(landmarks[8], wrist) > dist(landmarks[6], wrist);
+
+    // 2. Thumb is extended
+    // Tip (4) further from wrist (0) than MCP (2)
+    const isThumbExt = dist(landmarks[4], wrist) > dist(landmarks[2], wrist);
+
+    // 3. Middle, Ring, Pinky are curled
+    // A robust check: Tip is closer to wrist than the PIP joint (with slight tolerance), 
+    // OR tip is close to its MCP joint (meaning it's curled inwards).
+    const checkCurled = (tip, pip, mcp) => {
+        return dist(landmarks[tip], wrist) < dist(landmarks[pip], wrist) + 0.02 || 
+               dist(landmarks[tip], landmarks[mcp]) < dist(landmarks[pip], landmarks[mcp]) * 1.3;
+    };
+    
+    const isOthersCurled = checkCurled(12, 10, 9) && checkCurled(16, 14, 13) && checkCurled(20, 18, 17);
+
+    // 4. L-Shape Angle
+    // The angle between the thumb and index finger should be roughly 90 degrees.
+    const vecThumb = { x: landmarks[4].x - landmarks[2].x, y: landmarks[4].y - landmarks[2].y };
+    const vecIndex = { x: landmarks[8].x - landmarks[5].x, y: landmarks[8].y - landmarks[5].y };
+    
+    const dot = vecThumb.x * vecIndex.x + vecThumb.y * vecIndex.y;
+    const magT = Math.hypot(vecThumb.x, vecThumb.y);
+    const magI = Math.hypot(vecIndex.x, vecIndex.y);
+    
+    let isLAngle = false;
+    if (magT > 0 && magI > 0) {
+        const cosTheta = dot / (magT * magI);
+        // Require the angle to be between ~45 deg and ~135 deg (|cos| < 0.75)
+        isLAngle = Math.abs(cosTheta) < 0.75;
+    }
+
+    return isIndexExt && isThumbExt && isOthersCurled && isLAngle;
 }
 
 // ── Main prediction loop ──────────────────────────────────────────────────────
@@ -509,9 +646,8 @@ async function startPhotoboothFlow() {
     const countdownEl = document.getElementById("countdown");
     const slots       = frameMeta?.slots ?? [];
 
-    // Always take exactly 4 photos; extra slots beyond 4 are ignored,
-    // and shots without a matching slot fall back to full-frame capture.
-    for (let j = 1; j <= 4; j++) document.getElementById(`thumb${j}`).innerHTML = "";
+    capturedStripCanvases = [];
+    renderStripPreview([]);
 
     for (let i = 0; i < 4; i++) {
         currentSlotIndex = i;
@@ -520,7 +656,8 @@ async function startPhotoboothFlow() {
         // (no animation for shot 0 — the guide is already in place from selection)
         if (slots[i]) setSlotGuide(i, i > 0);
 
-        for (let c = 3; c > 0; c--) {
+        let timerSeconds = parseInt(document.getElementById("timerSelect").value) || 3;
+        for (let c = timerSeconds; c > 0; c--) {
             statusBadge.innerText = `PREPARING PHOTO ${i + 1}/4... 🌟`;
             countdownEl.innerText = c;
             countdownEl.classList.remove("hidden");
@@ -529,18 +666,20 @@ async function startPhotoboothFlow() {
         countdownEl.classList.add("hidden");
 
         // Shutter sound + flash
-        shutterSound.currentTime = 0;
-        shutterSound.play().catch(() => {});
+        const isSoundOn = document.getElementById("soundSelect") ? document.getElementById("soundSelect").value === "on" : true;
+        if (isSoundOn) {
+            shutterSound.currentTime = 0;
+            shutterSound.play().catch(() => {});
+        }
         flashDiv.classList.add("do-flash");
         setTimeout(() => flashDiv.classList.remove("do-flash"), 400);
 
         // Capture: center-crop to slot dimensions if a frame is active
         const capCanvas = slots[i] ? captureSlot(slots[i]) : captureFullFrame();
 
-        // Show thumbnail
-        const thumbImg = document.createElement("img");
-        thumbImg.src   = capCanvas.toDataURL("image/png");
-        document.getElementById(`thumb${i + 1}`).appendChild(thumbImg);
+        // Update live strip preview with newly captured photo
+        capturedStripCanvases.push(capCanvas);
+        renderStripPreview(capturedStripCanvases);
 
         const blob = await new Promise(res => capCanvas.toBlob(res, 'image/png'));
         photos.push(blob);

@@ -1,19 +1,33 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <title>UAI Photobooth | USTH</title>
+    <link rel="icon" type="image/png" href="/static/logo.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Changa+One:ital@0;1&family=Share+Tech&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&display=swap" rel="stylesheet">
 </head>
+
 <body>
     <div class="header-brand">
-        <h1>📸 UAI photobooth</h1>
-        <p>Creating memories at USTH</p>
+        <h1><img src="/static/logo.png" alt="Logo" class="brand-logo"> UAI PHOTOBOOTH</h1>
+        <p>Creating memories at USTH and UAI</p>
     </div>
 
     <header class="topbar">
         <select id="cameraSelect" class="btn"></select>
+        <select id="timerSelect" class="btn">
+            <option value="3">⏱️ 3s Timer</option>
+            <option value="5">⏱️ 5s Timer</option>
+            <option value="10">⏱️ 10s Timer</option>
+        </select>
+        <select id="soundSelect" class="btn">
+            <option value="on">🔊 Sound ON</option>
+            <option value="off">🔇 Sound OFF</option>
+        </select>
         <button id="btnFlip" class="btn">🔄 Flip Camera</button>
         <button id="btnSelectFrame" class="btn">🖼️ Select Frame</button>
     </header>
@@ -30,13 +44,10 @@
         </div>
 
         <div class="right-panel">
-            <div class="thumb-grid">
-                <div id="thumb1" class="thumb-item"></div>
-                <div id="thumb3" class="thumb-item"></div>
-                <div id="thumb2" class="thumb-item"></div>
-                <div id="thumb4" class="thumb-item"></div>
+            <div class="strip-preview-wrapper">
+                <canvas id="stripPreviewCanvas"></canvas>
             </div>
-            <p style="text-align: center; color: var(--primary); font-weight: bold; text-transform: uppercase;">Recent Captures</p>
+            <p class="preview-title">Recent Captures</p>
         </div>
     </main>
 
@@ -45,14 +56,17 @@
         <div class="qr-box">
             <img id="qrImg" src="">
             <h4>SCAN QR TO GET YOUR PHOTO ✨</h4>
-            <a id="downloadLink" target="_blank" style="color: var(--primary); font-weight: bold; text-decoration: none;">Or click here</a>
+            <a id="downloadLink" target="_blank"
+                style="color: var(--primary); font-weight: bold; text-decoration: none;">Or click here</a>
             <br><br>
-            <button onclick="location.reload()" class="btn" style="background: var(--accent); color: white; width: 100%; border: none;">RETAKE 💫</button>
+            <button onclick="location.reload()" class="btn"
+                style="background: var(--accent); color: white; width: 100%; border: none;">RETAKE 💫</button>
         </div>
     </div>
 
     <!-- Frame Picker Modal -->
-    <div id="framePickerModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="framePickerTitle">
+    <div id="framePickerModal" class="modal-overlay hidden" role="dialog" aria-modal="true"
+        aria-labelledby="framePickerTitle">
         <div class="modal-box">
             <div class="modal-header">
                 <h2 id="framePickerTitle">🖼️ Select a Frame</h2>
@@ -70,4 +84,5 @@
 
     <script type="module" src="/static/app.js"></script>
 </body>
+
 </html>

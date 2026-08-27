@@ -8,6 +8,8 @@ from uuid import uuid4
 from PIL import Image
 
 app = Flask(__name__)
+app.config['TEMPLATES_AUTO_RELOAD'] = True
+app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
 
 UPLOAD_FOLDER = 'uploads'
 if not os.path.exists(UPLOAD_FOLDER):
@@ -70,8 +72,8 @@ def analyze_frame(path):
     alpha = np.array(img)[:, :, 3]
 
     THRESH     = 30    # pixel is "transparent" if alpha < THRESH
-    ROW_RATIO  = 0.60  # fraction of transparent pixels to classify a row as cutout
-    COL_RATIO  = 0.60  # same for columns within each band
+    ROW_RATIO  = 0.25  # fraction of transparent pixels to classify a row as cutout
+    COL_RATIO  = 0.25  # same for columns within each band
     BAND_GAP   = 5     # max gap (rows) allowed within a single band
 
     transparent_rows = np.where((alpha < THRESH).mean(axis=1) > ROW_RATIO)[0]
@@ -91,12 +93,18 @@ def analyze_frame(path):
         bands.append((start, prev))
 
         for y0, y1 in bands:
+            # Filter out tiny artifacts (bands shorter than 50px)
+            if (y1 - y0) < 50:
+                continue
+
             band_alpha = alpha[y0:y1 + 1, :]
             transparent_cols = np.where((band_alpha < THRESH).mean(axis=0) > COL_RATIO)[0]
             if len(transparent_cols):
                 x0 = int(transparent_cols[0])
                 x1 = int(transparent_cols[-1])
-                slots.append({"x": x0, "y": y0, "w": x1 - x0, "h": y1 - y0})
+                # Filter out too narrow artifacts
+                if (x1 - x0) > 50:
+                    slots.append({"x": x0, "y": y0, "w": x1 - x0, "h": y1 - y0})
 
     result = {"frame_w": frame_w, "frame_h": frame_h, "slots": slots}
     _frame_meta_cache[cache_key] = result
