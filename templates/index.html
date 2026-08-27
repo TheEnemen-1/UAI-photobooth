@@ -1,19 +1,24 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <title>UAI Photobooth | USTH</title>
     <link rel="stylesheet" href="/static/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&display=swap" rel="stylesheet">
 </head>
+
 <body>
     <!-- Vertical side mottos -->
-    <div class="motto motto-left">say cheese!</div>
+    <div class="motto motto-left">say cheese...</div>
     <div class="motto motto-right">siuuuuuuuu!</div>
 
     <div class="header-brand">
-        <h1>UAI photobooth</h1>
-        <p>creating memories at USTH</p>
+        <img src="/static/logo.png" alt="UAI Logo" class="brand-logo">
+        <div class="brand-text">
+            <h1>UAI photobooth</h1>
+            <p>creating memories at USTH</p>
+        </div>
     </div>
 
     <header class="topbar">
@@ -23,14 +28,16 @@
 
         <!-- Timer Selection for capture delay -->
         <label class="btn">⏱ Timer:
-            <select id="timerSelect" style="border:none; background:transparent; font-weight:bold; color:inherit; cursor:pointer;">
+            <select id="timerSelect"
+                style="border:none; background:transparent; font-weight:bold; color:inherit; cursor:pointer;">
                 <option value="3">3s</option>
                 <option value="5">5s</option>
                 <option value="7">7s</option>
             </select>
         </label>
 
-        <label class="btn">🖼 Load PNG Frame <input type="file" id="frameInput" accept="image/png" style="display:none"></label>
+        <label class="btn">🖼 Load PNG Frame <input type="file" id="frameInput" accept="image/png"
+                style="display:none"></label>
     </header>
 
     <main id="cameraStage" class="stage">
@@ -51,7 +58,8 @@
                 <div id="thumb2" class="thumb-item"></div>
                 <div id="thumb4" class="thumb-item"></div>
             </div>
-            <p style="text-align: center; color: var(--primary); font-weight: bold; text-transform: uppercase;">Recent Captures</p>
+            <p style="text-align: center; color: var(--primary); font-weight: bold; text-transform: uppercase;">Recent
+                Captures</p>
         </div>
     </main>
 
@@ -60,12 +68,15 @@
         <div class="qr-box">
             <img id="qrImg" src="">
             <h4>SCAN QR TO GET YOUR PHOTO ✨</h4>
-            <a id="downloadLink" target="_blank" style="color: var(--primary); font-weight: bold; text-decoration: none;">Or click here</a>
+            <a id="downloadLink" target="_blank"
+                style="color: var(--primary); font-weight: bold; text-decoration: none;">Or click here</a>
             <br><br>
-            <button onclick="location.reload()" class="btn" style="background: var(--accent); color: white; width: 100%; border: none;">RETAKE 💫</button>
+            <button onclick="location.reload()" class="btn"
+                style="background: var(--accent); color: white; width: 100%; border: none;">RETAKE 💫</button>
         </div>
     </div>
 
     <script type="module" src="/static/app.js"></script>
 </body>
+
 </html>

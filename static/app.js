@@ -80,7 +80,8 @@ async function setupCameraList() {
         const previousVal = cameraSelect.value;
         cameraSelect.innerHTML = "";
         
-        let eosDeviceId = null;
+        let targetEosDeviceId = null;
+        let isNonProMatch = false;
 
         videoDevices.forEach((d, idx) => {
             const opt = document.createElement("option");
@@ -89,10 +90,17 @@ async function setupCameraList() {
             opt.text = label;
             cameraSelect.appendChild(opt);
 
-            // Match EOS Webcam Utility / Canon
             const labelLower = label.toLowerCase();
-            if (labelLower.includes("eos") || labelLower.includes("canon") || labelLower.includes("webcam utility")) {
-                eosDeviceId = d.deviceId;
+            const isPro = labelLower.includes("pro");
+
+            // Explicitly prioritize Non-Pro "EOS Webcam Utility"
+            if (labelLower.includes("eos webcam utility") && !isPro) {
+                targetEosDeviceId = d.deviceId;
+                isNonProMatch = true;
+            } else if (!isNonProMatch && (labelLower.includes("eos") || labelLower.includes("canon")) && !isPro) {
+                targetEosDeviceId = d.deviceId;
+            } else if (!targetEosDeviceId && (labelLower.includes("eos") || labelLower.includes("canon"))) {
+                targetEosDeviceId = d.deviceId;
             }
         });
 
@@ -102,11 +110,11 @@ async function setupCameraList() {
             opt.text = "No cameras detected";
             cameraSelect.appendChild(opt);
         } else {
-            // Keep previous selection if valid, otherwise auto-select EOS camera if found
-            if (previousVal && [...cameraSelect.options].some(o => o.value === previousVal)) {
+            // Always auto-select Non-Pro "EOS Webcam Utility" if present
+            if (targetEosDeviceId) {
+                cameraSelect.value = targetEosDeviceId;
+            } else if (previousVal && [...cameraSelect.options].some(o => o.value === previousVal)) {
                 cameraSelect.value = previousVal;
-            } else if (eosDeviceId) {
-                cameraSelect.value = eosDeviceId;
             }
         }
         

@@ -2,91 +2,167 @@
     --primary: #0088cc;
     --light-blue: #e0f2fe;
     --accent: #ff914d;
-    --bg: #f8fafc;
+    --bg: #e0f2fe; /* Light blue background for all screens */
 }
 
 body {
     background-color: var(--bg);
-    color: #1e293b; font-family: 'Montserrat', sans-serif;
+    color: #1e293b;
+    font-family: 'Montserrat', sans-serif;
     margin: 0;
     position: relative;
     min-height: 100vh;
 }
 
-/* ADDED: Blurred background logo for all screens */
+/* Discontinued background image */
 body::before {
-    content: "";
-    position: fixed;
-    top: 0; left: 0; width: 100%; height: 100%;
-    background: url('/static/logo.png') no-repeat center center;
-    background-size: 35%; /* Adjust size of logo */
-    opacity: 0.1; /* Make it faded */
-    filter: blur(1px); /* Slight blur */
-    z-index: -1; /* Place behind everything */
-    pointer-events: none;
+    display: none;
 }
 
-/* ADDED: Vertical mottos on sides */
+/* Enlarged Brand Logo positioned next to title text */
+.brand-logo {
+    height: 90px; /* Enlarged logo */
+    width: auto;
+    object-fit: contain;
+    flex-shrink: 0;
+}
+
+/* Vertical mottos on sides - Positioned at outer edges */
 .motto {
     position: fixed;
     top: 50%;
-    font-size: 32px;
+    font-size: 28px;
     font-weight: 900;
-    color: var(--primary);
-    opacity: 0.2;
+    color: var(--accent); /* Vibrant Orange */
+    opacity: 0.95;
     text-transform: uppercase;
     pointer-events: none;
     white-space: nowrap;
-    z-index: 100;
-    letter-spacing: 5px;
+    z-index: 5;
+    letter-spacing: 4px;
+    user-select: none;
 }
 
 .motto-left {
-    left: -50px;
+    left: -5px;
     transform: translateY(-50%) rotate(-90deg);
 }
 
 .motto-right {
-    right: -50px;
+    right: -5px;
     transform: translateY(-50%) rotate(90deg);
 }
 
+.header-brand,
+.topbar,
+.stage,
+.result-wrap {
+    position: relative;
+    z-index: 1;
+}
+
 .header-brand {
-    text-align: center; padding: 25px 0 10px 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    padding: 25px 0 10px 0;
+    text-align: left;
 }
-.header-brand h1 { 
-    margin: 0; font-size: 48px; color: var(--primary); text-transform: uppercase; font-weight: 900;
+
+.header-brand h1 {
+    margin: 0;
+    font-size: 48px;
+    color: var(--primary);
+    text-transform: uppercase;
+    font-weight: 900;
+    line-height: 1;
 }
-.header-brand p { margin: 0; font-size: 16px; color: var(--accent); font-weight: bold; }
+
+.header-brand p {
+    margin: 4px 0 0 0;
+    font-size: 16px;
+    color: var(--accent);
+    font-weight: bold;
+}
 
 .topbar {
-    width: 100%; padding: 10px; display: flex; justify-content: center; gap: 15px; margin-bottom: 20px;
+    width: 100%;
+    padding: 10px;
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-bottom: 20px;
 }
 
+/* Resized capture stage so outer side motto bars do not touch or overlap stage boxes */
 .stage {
-    display: flex; width: 95%; max-width: 1300px; margin: 0 auto; gap: 25px;
+    display: flex;
+    width: calc(100% - 180px);
+    max-width: 980px;
+    margin: 0 auto;
+    gap: 25px;
 }
 
-.left-panel { flex: 3; position: relative; }
-.right-panel { flex: 2; display: flex; flex-direction: column; gap: 15px; }
+.left-panel {
+    flex: 3;
+    position: relative;
+}
+
+.right-panel {
+    flex: 2;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
 
 .camera-container {
-    position: relative; width: 100%; aspect-ratio: 16/9;
-    border: 6px solid var(--primary); border-radius: 20px; overflow: hidden;
-    background: #000; box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16/9;
+    border: 6px solid var(--primary);
+    border-radius: 20px;
+    overflow: hidden;
+    background: #000;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
 }
 
-#video, #overlay { 
-    width: 100%; height: 100%; object-fit: cover; position: absolute; 
-    top: 0; left: 0; transform: scaleX(-1); 
+#video,
+#overlay {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    position: absolute;
+    top: 0;
+    left: 0;
+    transform: scaleX(-1);
 }
 
 .flash-effect {
-    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-    background: white; opacity: 0; pointer-events: none; z-index: 100;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: white;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 100;
 }
-.do-flash { animation: flash-anim 0.4s ease-out; }
-@keyframes flash-anim { 0% { opacity: 1; } 100% { opacity: 0; } }
+
+.do-flash {
+    animation: flash-anim 0.4s ease-out;
+}
+
+@keyframes flash-anim {
+    0% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: 0;
+    }
+}
 
 .thumb-grid {
     display: grid;
@@ -94,35 +170,98 @@ body::before {
     grid-template-rows: 1fr 1fr;
     gap: 15px;
     background: var(--light-blue);
-    padding: 20px; border-radius: 20px;
+    padding: 20px;
+    border-radius: 20px;
     border: 2px dashed var(--primary);
 }
 
 .thumb-item {
-    aspect-ratio: 4/3; background: #fff; border-radius: 12px;
-    border: 3px solid var(--primary); overflow: hidden;
-    display: flex; align-items: center; justify-content: center;
+    aspect-ratio: 4/3;
+    background: #fff;
+    border-radius: 12px;
+    border: 3px solid var(--primary);
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
-.thumb-item img { width: 100%; height: 100%; object-fit: cover; }
+
+.thumb-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
 
 #countdown {
-    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-    font-size: 180px; font-weight: 900; color: var(--accent); z-index: 50;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 180px;
+    font-weight: 900;
+    color: var(--accent);
+    z-index: 50;
 }
 
 .status-badge {
-    margin-top: 15px; padding: 12px; border-radius: 50px;
-    background: var(--primary); color: white; font-weight: bold; text-align: center;
+    margin-top: 15px;
+    padding: 12px;
+    border-radius: 50px;
+    background: var(--primary);
+    color: white;
+    font-weight: bold;
+    text-align: center;
 }
 
-.result-wrap { display: flex; justify-content: center; gap: 40px; margin: 40px 0; }
-#resultImg { height: 700px; border: 10px solid white; border-radius: 15px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
-.qr-box { background: white; color: black; padding: 30px; border-radius: 25px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
-.qr-box img { width: 200px; }
+.result-wrap {
+    display: flex;
+    justify-content: center;
+    gap: 40px;
+    margin: 40px 0;
+}
 
-.hidden { display: none !important; }
-.btn { padding: 10px 20px; border-radius: 12px; border: 2px solid var(--primary); background: white; color: var(--primary); cursor: pointer; font-weight: bold; transition: 0.3s; display: flex; align-items: center; gap: 5px; }
-.btn:hover { background: var(--primary); color: white; }
+#resultImg {
+    height: 700px;
+    border: 10px solid white;
+    border-radius: 15px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+}
+
+.qr-box {
+    background: white;
+    color: black;
+    padding: 30px;
+    border-radius: 25px;
+    text-align: center;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+}
+
+.qr-box img {
+    width: 200px;
+}
+
+.hidden {
+    display: none !important;
+}
+
+.btn {
+    padding: 10px 20px;
+    border-radius: 12px;
+    border: 2px solid var(--primary);
+    background: white;
+    color: var(--primary);
+    cursor: pointer;
+    font-weight: bold;
+    transition: 0.3s;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.btn:hover {
+    background: var(--primary);
+    color: white;
+}
 
 /* Styles for the timer select dropdown */
 #timerSelect {
@@ -134,4 +273,7 @@ body::before {
     cursor: pointer;
     font-size: 14px;
 }
-#timerSelect focus { outline: none; }
+
+#timerSelect focus {
+    outline: none;
+}
