@@ -85,35 +85,109 @@ btnFlip.onclick = () => {
     video.style.transform        = val;
 };
 
+let currentStream = null;
+let isPredicting  = false;
+
+function updateCameraAspect() {
+    const container = document.querySelector(".camera-container");
+    if (!container) return;
+
+    if (frameMeta?.slots?.length) {
+        setSlotGuide(currentSlotIndex, false);
+    } else {
+        if (video.videoWidth && video.videoHeight) {
+            container.style.setProperty("--cam-aspect", `${video.videoWidth} / ${video.videoHeight}`);
+            canvasElement.width  = video.videoWidth;
+            canvasElement.height = video.videoHeight;
+        } else {
+            container.style.setProperty("--cam-aspect", "16 / 9");
+            canvasElement.width  = 1280;
+            canvasElement.height = 720;
+        }
+    }
+}
+
 async function setupCameraList() {
-    const devices = await navigator.mediaDevices.enumerateDevices();
-    devices.filter(d => d.kind === 'videoinput').forEach(d => {
-        const opt   = document.createElement("option");
-        opt.value   = d.deviceId;
-        opt.text    = d.label || `Camera ${cameraSelect.length + 1}`;
-        cameraSelect.appendChild(opt);
-    });
-    cameraSelect.onchange = startCamera;
+    try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoDevices = devices.filter(d => d.kind === 'videoinput');
+        
+        const currentVal = cameraSelect.value;
+        cameraSelect.innerHTML = "";
+        
+        videoDevices.forEach((d, idx) => {
+            const opt   = document.createElement("option");
+            opt.value   = d.deviceId;
+            opt.text    = d.label || `Camera ${idx + 1}`;
+            cameraSelect.appendChild(opt);
+        });
+
+        if (currentVal && Array.from(cameraSelect.options).some(o => o.value === currentVal)) {
+            cameraSelect.value = currentVal;
+        }
+        cameraSelect.onchange = () => startCamera();
+    } catch (e) {
+        console.warn("Could not enumerate camera devices:", e);
+    }
 }
 
 async function startCamera() {
-    const constraints = {
-        video: {
-            deviceId: cameraSelect.value ? { exact: cameraSelect.value } : undefined,
-            width: 1280, height: 720
+    try {
+        // 1. Release previous camera handle so virtual drivers (EOS Webcam Utility) can reconnect
+        if (currentStream) {
+            currentStream.getTracks().forEach(track => track.stop());
+            currentStream = null;
         }
-    };
-    const stream = await navigator.mediaDevices.getUserMedia(constraints);
-    video.srcObject = stream;
-    video.onloadedmetadata = () => {
-        const container = document.querySelector(".camera-container");
-        if (container && video.videoWidth && video.videoHeight) {
-            container.style.setProperty("--cam-aspect", `${video.videoWidth} / ${video.videoHeight}`);
+
+        const selectedDeviceId = cameraSelect.value;
+        
+        // 2. Use flexible ideal constraints instead of rigid exact ones
+        const constraints = {
+            video: {
+                width: { ideal: 1920, min: 640 },
+                height: { ideal: 1080, min: 480 }
+            }
+        };
+        if (selectedDeviceId) {
+            constraints.video.deviceId = { exact: selectedDeviceId };
         }
-        canvasElement.width  = video.videoWidth;
-        canvasElement.height = video.videoHeight;
-        predict();
-    };
+
+        let stream;
+        try {
+            stream = await navigator.mediaDevices.getUserMedia(constraints);
+        } catch (err) {
+            console.warn("Retrying with flexible constraints for external camera:", err);
+            // Fallback for cameras that reject exact constraints
+            stream = await navigator.mediaDevices.getUserMedia({
+                video: selectedDeviceId ? { deviceId: selectedDeviceId } : true
+            });
+        }
+
+        currentStream   = stream;
+        video.srcObject = stream;
+
+        // Re-populate device labels after permission is granted
+        setupCameraList();
+
+        video.onloadedmetadata = () => {
+            updateCameraAspect();
+            if (!isPredicting) {
+                isPredicting = true;
+                predict();
+            }
+        };
+
+        if (video.videoWidth && video.videoHeight) {
+            updateCameraAspect();
+            if (!isPredicting) {
+                isPredicting = true;
+                predict();
+            }
+        }
+    } catch (err) {
+        console.error("Camera startup error:", err);
+        statusBadge.innerText = `Camera error: ${err.name || "Could not start camera"}. Please check EOS Webcam Utility.`;
+    }
 }
 
 // ── Frame Picker ──────────────────────────────────────────────────────────────
