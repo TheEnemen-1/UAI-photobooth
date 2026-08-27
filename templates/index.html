@@ -15,7 +15,7 @@
     <header class="topbar">
         <select id="cameraSelect" class="btn"></select>
         <button id="btnFlip" class="btn">🔄 Flip Camera</button>
-        <label class="btn">Load Frame <input type="file" id="frameInput" accept="image/png" style="display:none"></label>
+        <button id="btnSelectFrame" class="btn">🖼️ Select Frame</button>
     </header>
 
     <main id="cameraStage" class="stage">
@@ -48,6 +48,23 @@
             <a id="downloadLink" target="_blank" style="color: var(--primary); font-weight: bold; text-decoration: none;">Or click here</a>
             <br><br>
             <button onclick="location.reload()" class="btn" style="background: var(--accent); color: white; width: 100%; border: none;">RETAKE 💫</button>
+        </div>
+    </div>
+
+    <!-- Frame Picker Modal -->
+    <div id="framePickerModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="framePickerTitle">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h2 id="framePickerTitle">🖼️ Select a Frame</h2>
+                <button id="btnCloseFramePicker" class="modal-close" aria-label="Close">&times;</button>
+            </div>
+            <div id="framePickerGrid" class="frame-picker-grid">
+                <p class="picker-loading">Loading frames…</p>
+            </div>
+            <div class="modal-footer">
+                <button id="btnClearFrame" class="btn">✖ No Frame</button>
+                <button id="btnConfirmFrame" class="btn btn-accent">✔ Apply</button>
+            </div>
         </div>
     </div>
 

@@ -31,9 +31,10 @@ body {
 .right-panel { flex: 2; display: flex; flex-direction: column; gap: 15px; }
 
 .camera-container {
-    position: relative; width: 100%; aspect-ratio: 16/9;
+    position: relative; width: 100%; aspect-ratio: var(--cam-aspect, 16/9);
     border: 6px solid var(--primary); border-radius: 20px; overflow: hidden;
     background: #000; box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    transition: aspect-ratio 0.3s ease;
 }
 
 #video, #overlay { 
@@ -83,3 +84,103 @@ body {
 .hidden { display: none !important; }
 .btn { padding: 10px 20px; border-radius: 12px; border: 2px solid var(--primary); background: white; color: var(--primary); cursor: pointer; font-weight: bold; transition: 0.3s; }
 .btn:hover { background: var(--primary); color: white; }
+.btn-accent { background: var(--accent); border-color: var(--accent); color: white; }
+.btn-accent:hover { background: #e07a3a; border-color: #e07a3a; }
+
+/* ── Frame Picker Modal ─────────────────────────────────────── */
+.modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(4px);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 1000;
+    animation: fadeIn 0.2s ease;
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.modal-box {
+    background: #fff;
+    border-radius: 24px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+    width: min(720px, 94vw);
+    max-height: 85vh;
+    display: flex; flex-direction: column;
+    overflow: hidden;
+    animation: slideUp 0.25s ease;
+}
+@keyframes slideUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+.modal-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px 24px 16px;
+    border-bottom: 2px solid var(--light-blue);
+}
+.modal-header h2 { margin: 0; font-size: 22px; color: var(--primary); }
+
+.modal-close {
+    background: none; border: none; font-size: 28px; line-height: 1;
+    cursor: pointer; color: #94a3b8;
+    transition: color 0.2s;
+}
+.modal-close:hover { color: var(--accent); }
+
+.frame-picker-grid {
+    flex: 1; overflow-y: auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 16px;
+    padding: 20px 24px;
+}
+
+.picker-loading {
+    grid-column: 1 / -1;
+    text-align: center; color: #94a3b8;
+    font-style: italic;
+}
+
+.frame-card {
+    cursor: pointer;
+    border-radius: 14px;
+    border: 3px solid transparent;
+    overflow: hidden;
+    background: var(--light-blue);
+    transition: border-color 0.2s, transform 0.15s, box-shadow 0.2s;
+    position: relative;
+    aspect-ratio: 2/3;
+    display: flex; align-items: center; justify-content: center;
+}
+.frame-card img {
+    width: 100%; height: 100%; object-fit: contain;
+    display: block;
+}
+.frame-card:hover {
+    border-color: var(--primary);
+    transform: scale(1.03);
+    box-shadow: 0 6px 20px rgba(0,136,204,0.18);
+}
+.frame-card.selected {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 4px rgba(255,145,77,0.25);
+}
+.frame-card .frame-label {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    background: rgba(0,0,0,0.55);
+    color: #fff; font-size: 11px; font-weight: bold;
+    padding: 4px 6px;
+    text-align: center;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.frame-card.selected::after {
+    content: "✔";
+    position: absolute; top: 8px; right: 8px;
+    background: var(--accent); color: white;
+    border-radius: 50%; width: 22px; height: 22px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: bold;
+}
+
+.modal-footer {
+    display: flex; justify-content: flex-end; gap: 12px;
+    padding: 16px 24px;
+    border-top: 2px solid var(--light-blue);
+}
