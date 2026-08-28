@@ -800,18 +800,18 @@ async function predict() {
 
         if (handCount === 0) {
             statusBadge.innerText = debugMode 
-                ? `🐞 Debug FPS: ${fpsCounter} | Press Space, click 📸 Start Capture, or pose 👐`
-                : "Press Space, click 📸 Start Capture, or pose L-shape gesture 👐";
+                ? `🐞 Debug FPS: ${fpsCounter} | Press Space, click 📸 Start Capture, or show 2 hands 👐`
+                : "Show both hands in L-shape (Son Heung-min pose) to start! 👐";
+            gestureStart = null;
+        } else if (handCount === 1) {
+            statusBadge.innerText = "1 hand detected. Show your other hand in L-shape! ✋👐";
             gestureStart = null;
         } else {
             const handsL = results.landmarks.filter(isLSelection);
             
-            // Require 2 hands in L-shape (Son Heung-min pose) or 1 strict L-hand held steady
-            const isTwoHandPose = handsL.length >= 2;
-            const isOneHandPose = handsL.length === 1 && handCount === 1;
-            
-            if (isTwoHandPose || isOneHandPose) {
-                const requiredHoldTime = isTwoHandPose ? 1200 : 1600; // 1.2s for 2 hands, 1.6s for 1 hand
+            // Strictly require BOTH hands to be in L-shape
+            if (handsL.length >= 2) {
+                const requiredHoldTime = 1200; // 1.2 seconds hold
                 
                 if (!gestureStart) gestureStart = Date.now();
                 const elapsed = Date.now() - gestureStart;
@@ -828,14 +828,12 @@ async function predict() {
                     canvasCtx.setLineDash([]);
                     
                     const progress = Math.min((elapsed / requiredHoldTime) * 100, 100).toFixed(0);
-                    statusBadge.innerText = isTwoHandPose
-                        ? `HOLD 2-HAND POSE... ${progress}% 👐`
-                        : `HOLD L-GESTURE... ${progress}% 👆`;
+                    statusBadge.innerText = `HOLD 2-HAND POSE... ${progress}% 👐`;
                 }
             } else {
                 statusBadge.innerText = debugMode
-                    ? `🐞 Debug FPS: ${fpsCounter} | Hands seen: ${handCount} (L-shape: ${handsL.length}) | Pose 👐 or click 📸 Start`
-                    : "Form clear L-shape gesture 👐 or click 📸 Start Capture";
+                    ? `🐞 Debug FPS: ${fpsCounter} | Hands seen: ${handCount} (L-shape: ${handsL.length}/2) | Form 2 L-hands 👐`
+                    : "Please make sure BOTH hands form an L-shape 👐";
                 gestureStart = null;
             }
         }
