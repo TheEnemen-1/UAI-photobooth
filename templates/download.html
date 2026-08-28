@@ -1,55 +1,436 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Download Your Photo</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Download Your Photo | UAI Photobooth</title>
     <link rel="icon" type="image/png" href="/static/logo.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Changa+One:ital@0;1&family=Share+Tech&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Changa+One:ital@0;1&family=Outfit:wght@400;500;600;700&family=Share+Tech&display=swap" rel="stylesheet">
     <style>
-        body { 
-            text-align: center; 
-            background: #e0f2fe; /* Light Blue */
-            color: #1e293b; 
-            font-family: 'Share Tech', sans-serif; 
-            padding: 20px; 
+        :root {
+            --primary: #0088cc;
+            --primary-dark: #006699;
+            --accent: #ff914d;
+            --accent-hover: #ff7a29;
+            --bg-gradient: linear-gradient(135deg, #bae2ff 0%, #ffe4db 50%, #bae2ff 100%);
+            --card-bg: rgba(255, 255, 255, 0.92);
+            --card-border: rgba(255, 255, 255, 0.8);
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --shadow-subtle: 0 10px 30px rgba(0, 136, 204, 0.12);
+            --shadow-bold: 0 15px 35px rgba(0, 0, 0, 0.15);
+        }
+
+        * {
+            box-sizing: border-box;
             margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
         }
-        h1 { 
-            color: #0088cc; 
-            font-size: 32px; 
-            text-transform: uppercase; 
-            font-family: 'Changa One', cursive, sans-serif; 
-            letter-spacing: 1px;
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: var(--bg-gradient);
+            background-attachment: fixed;
+            color: var(--text-main);
+            min-height: 100vh;
+            padding: 20px 15px 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
-        img.strip { 
-            max-width: 90%; 
-            border-radius: 15px; 
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2); 
-            border: 8px solid white;
-            margin-top: 10px;
+
+        .container {
+            width: 100%;
+            max-width: 520px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
         }
-        p { font-weight: bold; margin-top: 20px; color: #64748b; }
-        .btn { 
-            display: inline-block; 
-            margin-top: 25px; 
-            padding: 18px 40px; 
-            background: #ff914d; /* Orange Accent */
-            color: white; 
-            text-decoration: none; 
-            border-radius: 50px; 
+
+        .header {
+            text-align: center;
+            margin-top: 5px;
+        }
+
+        .brand-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(8px);
+            padding: 6px 14px;
+            border-radius: 30px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--primary);
+            margin-bottom: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        .brand-badge img {
+            height: 18px;
+            width: auto;
+        }
+
+        h1 {
             font-family: 'Changa One', cursive, sans-serif;
-            font-size: 20px;
-            letter-spacing: 1px;
-            box-shadow: 0 5px 15px rgba(255, 145, 77, 0.4);
+            font-size: 32px;
+            color: var(--primary);
             text-transform: uppercase;
+            letter-spacing: 1px;
+            text-shadow: 0 2px 10px rgba(0, 136, 204, 0.15);
+        }
+
+        .subtitle {
+            font-size: 14px;
+            color: var(--text-muted);
+            font-weight: 500;
+            margin-top: 4px;
+        }
+
+        /* Photo Card */
+        .photo-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            border: 2px solid var(--card-border);
+            border-radius: 24px;
+            padding: 16px;
+            width: 100%;
+            box-shadow: var(--shadow-bold);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+        }
+
+        .image-wrapper {
+            position: relative;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            cursor: pointer;
+            border-radius: 16px;
+            overflow: hidden;
+            background: #f1f5f9;
+        }
+
+        .strip-img {
+            width: 100%;
+            max-width: 320px;
+            height: auto;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+            transition: transform 0.2s ease;
+            display: block;
+        }
+
+        .image-wrapper:active .strip-img {
+            transform: scale(0.98);
+        }
+
+        /* Action Buttons */
+        .action-group {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 18px;
+        }
+
+        .btn-primary {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, var(--accent) 0%, #ff7020 100%);
+            color: white;
+            text-decoration: none;
+            border: none;
+            border-radius: 16px;
+            font-family: 'Changa One', cursive, sans-serif;
+            font-size: 19px;
+            letter-spacing: 0.5px;
+            box-shadow: 0 6px 20px rgba(255, 145, 77, 0.35);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary:active {
+            transform: translateY(2px);
+            box-shadow: 0 2px 10px rgba(255, 145, 77, 0.3);
+        }
+
+        .btn-secondary {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            padding: 14px;
+            background: white;
+            color: var(--primary);
+            text-decoration: none;
+            border: 2px solid var(--primary);
+            border-radius: 16px;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 700;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-secondary:active {
+            background: var(--light-blue);
+        }
+
+        /* Tips */
+        .tips-box {
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 14px;
+            padding: 12px 14px;
+            font-size: 13px;
+            color: var(--text-muted);
+            text-align: center;
+            line-height: 1.5;
+            width: 100%;
+            margin-top: 4px;
+        }
+
+        .tips-box strong {
+            color: var(--text-main);
+        }
+
+        /* Individual Photos Section */
+        .individual-section {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            border: 2px solid var(--card-border);
+            border-radius: 20px;
+            padding: 18px 16px;
+            width: 100%;
+            box-shadow: var(--shadow-subtle);
+        }
+
+        .section-title {
+            font-family: 'Changa One', cursive, sans-serif;
+            color: var(--primary);
+            font-size: 18px;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .photos-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        .photo-thumb-card {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid #e2e8f0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .photo-thumb-card img {
+            width: 100%;
+            aspect-ratio: 16/9;
+            object-fit: cover;
+            display: block;
+        }
+
+        .photo-thumb-btn {
+            padding: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--primary);
+            background: #f8fafc;
+            text-decoration: none;
+            text-align: center;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .photo-thumb-btn:active {
+            background: var(--light-blue);
+        }
+
+        /* Retake / Home Button */
+        .btn-retake {
+            color: var(--text-muted);
+            font-size: 14px;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 20px;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.6);
+            transition: background 0.2s;
+        }
+
+        .btn-retake:active {
+            background: white;
+        }
+
+        /* Toast notification */
+        #toast {
+            position: fixed;
+            bottom: 25px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: rgba(30, 41, 59, 0.95);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 30px;
+            font-size: 14px;
+            font-weight: 600;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.25);
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 100;
+            pointer-events: none;
+        }
+
+        #toast.show {
+            transform: translateX(-50%) translateY(0);
         }
     </style>
 </head>
 <body>
-    <h1>Save Your Memories ✨</h1>
-    <img src="{{ strip_url }}" class="strip">
-    <p>📷 Long press on the image to save to your phone!</p>
-    <a href="/" class="btn">TAKE ANOTHER ONE 💫</a>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="brand-badge">
+                <img src="/static/logo.png" alt="Logo">
+                <span>UAI PHOTOBOOTH • USTH</span>
+            </div>
+            <h1>Your Memories ✨</h1>
+            <p class="subtitle">Scan successful! Save and share your photo strip</p>
+        </header>
+
+        {% if error %}
+        <div class="photo-card" style="text-align: center; padding: 30px 20px;">
+            <h2 style="color: #ef4444; margin-bottom: 10px;">⚠️ Photo Not Found</h2>
+            <p style="color: var(--text-muted); margin-bottom: 20px;">{{ error }}</p>
+            <a href="/" class="btn-primary">📸 Go to Photobooth</a>
+        </div>
+        {% else %}
+
+        <!-- Main Photo Strip Card -->
+        <div class="photo-card">
+            <div class="image-wrapper" onclick="handleImageClick()">
+                <img src="{{ strip_url }}" alt="Your UAI Photo Strip" class="strip-img" id="mainStripImg">
+            </div>
+
+            <div class="action-group">
+                <!-- Direct Attachment Download Button -->
+                <a href="{{ direct_download_url }}" class="btn-primary" id="btnDownload" download="UAI_photostrip_{{ session_id[:8] }}.png">
+                    <span>⬇️</span>
+                    <span>DOWNLOAD PHOTO STRIP</span>
+                </a>
+
+                <!-- Native Web Share / Save to Photos Button -->
+                <button type="button" class="btn-secondary" id="btnShare" onclick="shareOrSavePhoto()">
+                    <span>📲</span>
+                    <span>Save to Photos / Share</span>
+                </button>
+            </div>
+
+            <div class="tips-box">
+                💡 <strong>iPhone & Android Tip:</strong> Tap <b>Download</b> above, or <b>touch & hold</b> the photo and select <em>"Save Image"</em> or <em>"Download image"</em>!
+            </div>
+        </div>
+
+        {% if photos and photos|length > 0 %}
+        <!-- Individual Photos Section -->
+        <div class="individual-section">
+            <div class="section-title">
+                <span>📸</span>
+                <span>Original Snapshots ({{ photos|length }} Photos)</span>
+            </div>
+            <div class="photos-grid">
+                {% for p in photos %}
+                <div class="photo-thumb-card">
+                    <img src="{{ p.view_url }}" alt="Snapshot {{ p.index }}" loading="lazy">
+                    <a href="{{ p.download_url }}" class="photo-thumb-btn" download="UAI_photo_{{ p.index }}_{{ session_id[:8] }}.png">
+                        ⬇️ Save Shot {{ p.index }}
+                    </a>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <a href="/" class="btn-retake">
+            <span>💫</span>
+            <span>Take Another Photo</span>
+        </a>
+
+        {% endif %}
+    </div>
+
+    <!-- Toast UI -->
+    <div id="toast">Photo is downloading...</div>
+
+    <script>
+        function showToast(msg) {
+            const toast = document.getElementById("toast");
+            toast.innerText = msg;
+            toast.classList.add("show");
+            setTimeout(() => toast.classList.remove("show"), 3000);
+        }
+
+        async function shareOrSavePhoto() {
+            const imgUrl = "{{ strip_url }}";
+            try {
+                showToast("Preparing photo...");
+                const response = await fetch(imgUrl);
+                const blob = await response.blob();
+                const file = new File([blob], "UAI_photostrip.png", { type: "image/png" });
+
+                if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                    await navigator.share({
+                        files: [file],
+                        title: "My UAI Photobooth Memories",
+                        text: "Check out my photo from UAI Photobooth at USTH! ✨"
+                    });
+                    showToast("Shared successfully! ✨");
+                } else {
+                    // Trigger direct download
+                    const a = document.createElement("a");
+                    a.href = "{{ direct_download_url }}";
+                    a.download = "UAI_photostrip_{{ session_id[:8] }}.png";
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    showToast("Downloaded photo! 💾");
+                }
+            } catch (err) {
+                if (err.name !== 'AbortError') {
+                    // Fallback to direct download
+                    window.location.href = "{{ direct_download_url }}";
+                }
+            }
+        }
+
+        function handleImageClick() {
+            showToast("Long press on image to save to camera roll!");
+        }
+
+        document.getElementById("btnDownload")?.addEventListener("click", () => {
+            showToast("Downloading your memories... 💾");
+        });
+    </script>
 </body>
 </html>

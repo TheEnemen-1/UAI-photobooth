@@ -1,10 +1,10 @@
-import os
-import numpy as np
+﻿import os
 import socket
+from uuid import uuid4
+import numpy as np
+from PIL import Image
 import qrcode
 from flask import Flask, render_template, request, jsonify, send_from_directory
-from uuid import uuid4
-from PIL import Image
 
 app = Flask(__name__)
 app.config['TEMPLATES_AUTO_RELOAD'] = True
@@ -15,9 +15,10 @@ if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
 # ==========================================================================
-# CLOUDFLARE SETTING: Paste your link here
-# Keep it empty "" if you want to use local Wi-Fi IP
-PUBLIC_URL = "https://fool-butterfly-ripe-decorative.trycloudflare.com"
+# CLOUDFLARE / PUBLIC URL SETTING:
+# - Leave empty "" to auto-detect public tunnel or use local Wi-Fi IP
+# - Or set your custom domain / trycloudflare link here or via PUBLIC_URL env var
+PUBLIC_URL = os.environ.get("PUBLIC_URL", " https://does-schemes-warcraft-trim.trycloudflare.com")
 # ==========================================================================
 
 # In-process cache for frame analysis results, keyed by (absolute_path, mtime)
@@ -39,6 +40,32 @@ def get_lan_ip():
     return ip
 
 
+def get_base_url(client_origin=None):
+    """
+    Intelligently determine the base URL for QR code generation:
+    1. Explicit PUBLIC_URL (if configured)
+    2. Client origin passed from frontend (if not localhost)
+    3. Host header (if not localhost)
+    4. LAN IP address on port 5000 (for same Wi-Fi mobile scanning)
+    """
+    configured = os.environ.get("PUBLIC_URL", PUBLIC_URL).strip()
+    if configured and not ("localhost" in configured or "127.0.0.1" in configured):
+        return configured.rstrip('/')
+
+    if client_origin:
+        client_origin = client_origin.strip().rstrip('/')
+        if not ("localhost" in client_origin or "127.0.0.1" in client_origin):
+            return client_origin
+
+    if request and request.host:
+        host = request.host
+        if not ("localhost" in host or "127.0.0.1" in host):
+            scheme = request.headers.get('X-Forwarded-Proto', request.scheme or 'http')
+            return f"{scheme}://{host}"
+
+    return f"http://{get_lan_ip()}:5000"
+
+
 def analyze_frame(path):
     """
     Scan the alpha channel of a PNG frame to detect transparent cutout slots.
@@ -51,14 +78,6 @@ def analyze_frame(path):
       4. Return each band as one slot: {x, y, w, h}.
 
     Result is cached by (path, mtime) so re-opening the same file is free.
-
-    Returns:
-        {
-          "frame_w": int,
-          "frame_h": int,
-          "slots":   [{"x": int, "y": int, "w": int, "h": int}, ...]
-        }
-        Slots are sorted top-to-bottom.
     """
     path = os.path.abspath(path)
     mtime = os.path.getmtime(path)
@@ -71,7 +90,7 @@ def analyze_frame(path):
     alpha = np.array(img)[:, :, 3]
 
     THRESH     = 50    # pixel is "transparent" if alpha < THRESH
-    ROW_RATIO  = 0.08  # fraction of transparent pixels to classify a row as cutout (handles large character overlays)
+    ROW_RATIO  = 0.08  # fraction of transparent pixels to classify a row as cutout
     COL_RATIO  = 0.15  # same for columns within each band
     BAND_GAP   = 15    # max gap (rows) allowed within a single band
 
@@ -92,7 +111,6 @@ def analyze_frame(path):
         bands.append((start, prev))
 
         for y0, y1 in bands:
-            # Filter out tiny artifacts (bands shorter than 50px)
             if (y1 - y0) < 50:
                 continue
 
@@ -101,12 +119,11 @@ def analyze_frame(path):
             if len(transparent_cols):
                 x0 = int(transparent_cols[0])
                 x1 = int(transparent_cols[-1])
-                # Filter out too narrow artifacts
                 if (x1 - x0) > 50:
                     slots.append({"x": x0, "y": y0, "w": x1 - x0, "h": y1 - y0})
 
     if not slots:
-        # Fallback: create 4 equal vertical slots if transparent cutouts could not be detected automatically
+        # Fallback: create 4 equal vertical slots
         margin_x = int(frame_w * 0.05)
         margin_y = int(frame_h * 0.03)
         slot_w = frame_w - 2 * margin_x
@@ -124,22 +141,18 @@ def analyze_frame(path):
 
 def center_crop_to_slot(img, slot_w, slot_h):
     """
-    Center-crop *img* to match the slot's aspect ratio, then resize to
-    (slot_w × slot_h).  Mirrors the identical algorithm in app.js so the
-    server composite matches what the client captured.
+    Center-crop *img* to match the slot's aspect ratio, then resize to (slot_w x slot_h).
     """
     src_w, src_h  = img.size
     slot_aspect   = slot_w / slot_h
     src_aspect    = src_w  / src_h
 
     if src_aspect > slot_aspect:
-        # Source is wider → trim the sides
         crop_h = src_h
         crop_w = round(src_h * slot_aspect)
         crop_x = (src_w - crop_w) // 2
         crop_y = 0
     else:
-        # Source is taller → trim top/bottom
         crop_w = src_w
         crop_h = round(src_w / slot_aspect)
         crop_x = 0
@@ -152,10 +165,6 @@ def center_crop_to_slot(img, slot_w, slot_h):
 def create_strip(session_dir, photos_count, frame_path=None):
     """
     Composite captured photos into the frame's transparent cutout slots.
-
-    If *frame_path* is provided the canvas size matches the frame's native
-    dimensions and each photo is center-cropped into its detected slot.
-    Falls back to the original fixed 600×1800 layout when no frame is given.
     """
     if frame_path and os.path.isfile(frame_path):
         meta     = analyze_frame(frame_path)
@@ -172,13 +181,10 @@ def create_strip(session_dir, photos_count, frame_path=None):
                 photo = center_crop_to_slot(photo, slot['w'], slot['h'])
                 canvas.paste(photo, (slot['x'], slot['y']))
 
-        # Composite the decorative frame layer on top (transparent cutouts let
-        # the photos show through)
         frame_img = Image.open(frame_path).convert("RGBA")
         canvas.alpha_composite(frame_img)
 
     else:
-        # No frame selected — original fixed-position layout
         strip_w, strip_h = 600, 1800
         canvas = Image.new('RGBA', (strip_w, strip_h), (255, 255, 255, 255))
         img_w, img_h = 540, 304
@@ -221,16 +227,7 @@ def list_frames():
 
 @app.route('/api/frame-meta/<path:filename>')
 def frame_meta(filename):
-    """
-    Return the detected slot bounding boxes for a frame image.
-
-    Response shape:
-        {
-          "frame_w": int,
-          "frame_h": int,
-          "slots": [{"x": int, "y": int, "w": int, "h": int}, ...]
-        }
-    """
+    """Return the detected slot bounding boxes for a frame image."""
     frames_dir = os.path.join(os.path.dirname(__file__), 'frames')
     frame_path = os.path.join(frames_dir, os.path.basename(filename))
     if not os.path.isfile(frame_path):
@@ -251,17 +248,12 @@ def save_photos():
     Accept 4 captured photo blobs plus an optional frame reference,
     composite them into the final photo strip, generate a QR code, and
     return URLs for both.
-
-    Form fields:
-        photo_0 … photo_3  — PNG blobs
-        frame              — uploaded frame file (optional)
-        frame_name         — filename from frames/ folder (fallback)
     """
     session_id  = str(uuid4())
     session_dir = os.path.join(UPLOAD_FOLDER, session_id)
     os.makedirs(session_dir)
 
-    # Resolve frame path: an uploaded file takes priority over a name reference
+    # Resolve frame path
     frame_path     = None
     uploaded_frame = request.files.get('frame')
     if uploaded_frame:
@@ -285,18 +277,27 @@ def save_photos():
     strip_filename = create_strip(session_dir, 4, frame_path)
 
     # Build the download URL for the QR code
-    if PUBLIC_URL:
-        download_url = f"{PUBLIC_URL.rstrip('/')}/download/{session_id}"
-    else:
-        download_url = f"http://{get_lan_ip()}:5000/download/{session_id}"
+    client_origin = request.form.get('client_base_url')
+    base_url = get_base_url(client_origin)
+    download_url = f"{base_url}/download/{session_id}"
 
-    qr = qrcode.make(download_url)
-    qr.save(os.path.join(session_dir, 'qr.png'))
+    # Generate QR Code pointing directly to mobile download page
+    qr = qrcode.QRCode(
+        version=None,
+        error_correction=qrcode.constants.ERROR_CORRECT_M,
+        box_size=10,
+        border=4,
+    )
+    qr.add_data(download_url)
+    qr.make(fit=True)
+    qr_img = qr.make_image(fill_color="#0088cc", back_color="white")
+    qr_img.save(os.path.join(session_dir, 'qr.png'))
 
     return jsonify({
-        "session_id": session_id,
-        "strip_url":  f"/get_upload/{session_id}/{strip_filename}",
-        "qr_url":     f"/get_upload/{session_id}/qr.png"
+        "session_id":   session_id,
+        "strip_url":    f"/get_upload/{session_id}/{strip_filename}",
+        "qr_url":       f"/get_upload/{session_id}/qr.png",
+        "download_url": download_url
     })
 
 
@@ -307,12 +308,72 @@ def get_upload(session_id, filename):
 
 @app.route('/download/<session_id>')
 def download_page(session_id):
+    session_dir = os.path.join(UPLOAD_FOLDER, session_id)
+    if not os.path.isdir(session_dir):
+        return render_template('download.html', error="Session not found or expired."), 404
+
     strip_url = f"/get_upload/{session_id}/final_strip.png"
-    return render_template('download.html', strip_url=strip_url)
+
+    # Collect individual photo URLs if present
+    photos = []
+    for i in range(4):
+        photo_name = f"photo_{i}.png"
+        if os.path.exists(os.path.join(session_dir, photo_name)):
+            photos.append({
+                "index": i + 1,
+                "view_url": f"/get_upload/{session_id}/{photo_name}",
+                "download_url": f"/download_photo/{session_id}/{i}"
+            })
+
+    return render_template(
+        'download.html',
+        session_id=session_id,
+        strip_url=strip_url,
+        photos=photos,
+        direct_download_url=f"/download_photo/{session_id}"
+    )
+
+
+@app.route('/download_photo/<session_id>')
+def download_photo(session_id):
+    """Serve the final photo strip as a direct attachment file download."""
+    session_dir = os.path.join(UPLOAD_FOLDER, session_id)
+    file_path = os.path.join(session_dir, 'final_strip.png')
+    if not os.path.isfile(file_path):
+        return "Photo strip not found", 404
+    return send_from_directory(
+        session_dir,
+        'final_strip.png',
+        as_attachment=True,
+        download_name=f"UAI_photostrip_{session_id[:8]}.png"
+    )
+
+
+@app.route('/download_photo/<session_id>/<int:photo_idx>')
+def download_individual_photo(session_id, photo_idx):
+    """Serve an individual captured photo as a direct attachment file download."""
+    session_dir = os.path.join(UPLOAD_FOLDER, session_id)
+    filename = f"photo_{photo_idx}.png"
+    file_path = os.path.join(session_dir, filename)
+    if not os.path.isfile(file_path):
+        return "Photo not found", 404
+    return send_from_directory(
+        session_dir,
+        filename,
+        as_attachment=True,
+        download_name=f"UAI_photo_{photo_idx + 1}_{session_id[:8]}.png"
+    )
 
 
 if __name__ == '__main__':
-    print(f"ACCESS AT: http://{get_lan_ip()}:5000")
+    lan_ip = get_lan_ip()
+    print("=" * 60)
+    print(" 📸 UAI PHOTOBOOTH SERVER RUNNING")
+    print(f" 🏠 Local booth access:  http://localhost:5000")
+    print(f" 📶 Same Wi-Fi access:   http://{lan_ip}:5000")
     if PUBLIC_URL:
-        print(f"PUBLIC ACCESS AT: {PUBLIC_URL}")
+        print(f" 🌐 Public Tunnel URL:   {PUBLIC_URL}")
+    else:
+        print(" 💡 For 4G/remote scanning: run cloudflared.exe tunnel --url http://localhost:5000")
+    print("=" * 60)
     app.run(host='0.0.0.0', port=5000)

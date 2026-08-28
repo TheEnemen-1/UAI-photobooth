@@ -99,6 +99,42 @@ async function initMediaPipe() {
 }
 
 async function init() {
+    // Setup Cloudflare Tunnel URL button
+    const btnTunnel = document.getElementById("btnTunnel");
+    if (btnTunnel) {
+        const updateTunnelBtnText = () => {
+            const saved = localStorage.getItem("uai_tunnel_url");
+            if (saved) {
+                btnTunnel.innerText = "🌐 Tunnel: Active";
+                btnTunnel.style.borderColor = "#22c55e";
+                btnTunnel.style.color = "#16a34a";
+                btnTunnel.title = "Current QR link: " + saved + " (Click to change/clear)";
+            } else {
+                btnTunnel.innerText = "🌐 Cloudflare URL";
+                btnTunnel.style.borderColor = "";
+                btnTunnel.style.color = "";
+                btnTunnel.title = "Click to set Cloudflare trycloudflare link for mobile QR code";
+            }
+        };
+        updateTunnelBtnText();
+
+        btnTunnel.onclick = () => {
+            const current = localStorage.getItem("uai_tunnel_url") || "";
+            const input = prompt("Paste your Cloudflare Tunnel link here (e.g., https://xyz.trycloudflare.com):\n(Leave empty to use automatic detection)", current);
+            if (input !== null) {
+                const cleaned = input.trim();
+                if (cleaned) {
+                    localStorage.setItem("uai_tunnel_url", cleaned);
+                    alert("✅ Cloudflare Tunnel URL saved! QR codes will now point to:\n" + cleaned);
+                } else {
+                    localStorage.removeItem("uai_tunnel_url");
+                    alert("Cleared! Using automatic URL detection.");
+                }
+                updateTunnelBtnText();
+            }
+        };
+    }
+
     // Attach manual capture triggers
     if (btnStartCapture) {
         btnStartCapture.onclick = () => {
@@ -930,7 +966,7 @@ async function startPhotoboothFlow() {
         capturedStripCanvases.push(capCanvas);
         renderStripPreview(capturedStripCanvases);
 
-        const blob = await new Promise(res => capCanvas.toBlob(res, 'image/png'));
+        const blob = await new Promise(res => capCanvas.toBlob(res, 'image/jpeg', 0.92));
         photos.push(blob);
         await new Promise(r => setTimeout(r, 600));
     }
@@ -944,20 +980,33 @@ async function startPhotoboothFlow() {
 
 // ── Upload & result display ───────────────────────────────────────────────────
 async function uploadPhotos(blobs) {
-    statusBadge.innerText = "CREATING YOUR MEMORIES...";
+    statusBadge.innerText = "CREATING YOUR MEMORIES... ✨";
     const formData = new FormData();
     blobs.forEach((b, i) => formData.append(`photo_${i}`, b));
     if (selectedFrameName) formData.append('frame_name', selectedFrameName);
+    
+    // Pass saved Tunnel URL if available, else current origin
+    const savedTunnel = localStorage.getItem("uai_tunnel_url");
+    formData.append('client_base_url', savedTunnel || window.location.origin);
 
-    const res  = await fetch('/api/save', { method: 'POST', body: formData });
-    const data = await res.json();
+    try {
+        const res  = await fetch('/api/save', { method: 'POST', body: formData });
+        const data = await res.json();
 
-    document.querySelector(".topbar").classList.add("hidden");
-    document.getElementById("cameraStage").classList.add("hidden");
-    document.getElementById("resultWrap").classList.remove("hidden");
-    document.getElementById("resultImg").src    = data.strip_url;
-    document.getElementById("qrImg").src        = data.qr_url;
-    document.getElementById("downloadLink").href = `/download/${data.session_id}`;
+        document.querySelector(".topbar").classList.add("hidden");
+        document.getElementById("cameraStage").classList.add("hidden");
+        document.getElementById("resultWrap").classList.remove("hidden");
+        document.getElementById("resultImg").src = data.strip_url;
+        document.getElementById("qrImg").src = data.qr_url;
+        
+        const dlLink = document.getElementById("downloadLink");
+        const downloadUrl = data.download_url || `/download/${data.session_id}`;
+        dlLink.href = downloadUrl;
+        dlLink.innerText = downloadUrl;
+    } catch (err) {
+        console.error("Upload error:", err);
+        statusBadge.innerText = "❌ Failed to save photos. Please try again.";
+    }
 }
 
 init();
