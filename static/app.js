@@ -60,8 +60,24 @@ let lastFpsUpdate   = performance.now();
 let fpsCounter      = 0;
 
 // ── Initialisation ───────────────────────────────────────────────────────────
-async function init() {
+function checkMediaDevicesSupport() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        const isLocalhost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+        let msg = '❌ Camera access unavailable or blocked.';
+        if (!isLocalhost && window.location.protocol !== 'https:') {
+            msg = `⚠️ Camera requires HTTPS or localhost! Please open http://localhost:5000 on this PC or use the Cloudflare HTTPS link.`;
+        }
+        statusBadge.style.background = "#e11d48";
+        statusBadge.innerText = msg;
+        console.error(msg);
+        return false;
+    }
+    return true;
+}
+
+async function initMediaPipe() {
     try {
+        console.log("Loading MediaPipe HandLandmarker in background...");
         const vision = await FilesetResolver.forVisionTasks(
             "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm"
         );
@@ -71,12 +87,18 @@ async function init() {
                 delegate: "GPU"
             },
             runningMode: "VIDEO",
-            numHands: 2
+            numHands: 2,
+            minHandDetectionConfidence: 0.65,
+            minHandPresenceConfidence: 0.65,
+            minTrackingConfidence: 0.65
         });
+        console.log("MediaPipe HandLandmarker ready with strict confidence thresholds!");
     } catch (err) {
-        console.warn("MediaPipe HandLandmarker init error:", err);
+        console.warn("MediaPipe HandLandmarker init warning (gesture detection may be unavailable, manual capture still works):", err);
     }
+}
 
+async function init() {
     // Attach manual capture triggers
     if (btnStartCapture) {
         btnStartCapture.onclick = () => {
@@ -93,12 +115,15 @@ async function init() {
         }
     });
 
-    await setupCameraList();
+    // Start camera immediately so preview opens with zero delay
     await startCamera();
     renderStripPreview([]);
 
     // Auto-select first frame if none selected yet
     autoSelectDefaultFrame();
+
+    // Initialize MediaPipe AI in background without blocking video feed
+    initMediaPipe();
 
     if (debugMode) {
         statusBadge.style.background = '#9333ea';
@@ -197,8 +222,13 @@ function updateCameraAspect() {
 }
 
 let userSelectedDeviceId = null; // Sticky state for explicitly selected camera
+let isPopulatingCameras = false;
 
-async function setupCameraList() {
+async function setupCameraList(activeDeviceId = null) {
+    if (!checkMediaDevicesSupport()) return;
+    if (isPopulatingCameras) return;
+    isPopulatingCameras = true;
+
     try {
         console.log("[Camera Selection Flow] 🔍 Enumerating camera devices...");
         const devices = await navigator.mediaDevices.enumerateDevices();
@@ -207,162 +237,162 @@ async function setupCameraList() {
         console.log(`[Camera Selection Flow] Found ${videoDevices.length} video device(s):`, 
             videoDevices.map(d => ({ label: d.label || 'Unlabeled', id: d.deviceId })));
 
-        // Target device is sticky user selection, or current dropdown value
-        const targetDeviceId = userSelectedDeviceId || cameraSelect.value;
         cameraSelect.innerHTML = "";
-        
-        let eosDeviceId = null;
+
+        if (videoDevices.length === 0) {
+            const opt = document.createElement("option");
+            opt.value = "";
+            opt.text  = "No camera detected";
+            cameraSelect.appendChild(opt);
+            return;
+        }
 
         videoDevices.forEach((d, idx) => {
             const opt   = document.createElement("option");
             opt.value   = d.deviceId;
-            const label = d.label || `Camera ${idx + 1}`;
-            opt.text    = label;
+            opt.text    = d.label || `Camera ${idx + 1}`;
             cameraSelect.appendChild(opt);
-
-            if (/eos|canon|webcam utility|virtual|obs/i.test(label) && !eosDeviceId) {
-                eosDeviceId = d.deviceId;
-            }
         });
 
-        // Maintain selection
-        if (targetDeviceId && Array.from(cameraSelect.options).some(o => o.value === targetDeviceId)) {
-            cameraSelect.value = targetDeviceId;
-        } else if (eosDeviceId && !userSelectedDeviceId) {
-            cameraSelect.value = eosDeviceId;
-            userSelectedDeviceId = eosDeviceId;
+        // Maintain or sync selection with active device
+        const targetId = userSelectedDeviceId || activeDeviceId || cameraSelect.value;
+        if (targetId && Array.from(cameraSelect.options).some(o => o.value === targetId)) {
+            cameraSelect.value = targetId;
         }
 
         cameraSelect.onchange = () => {
             userSelectedDeviceId = cameraSelect.value;
             console.log(`[Camera Selection Flow] 📌 User selected camera deviceId: "${userSelectedDeviceId}"`);
-            startCamera();
+            startCamera(userSelectedDeviceId);
         };
     } catch (e) {
         console.warn("[Camera Selection Flow] Could not enumerate camera devices:", e);
+    } finally {
+        isPopulatingCameras = false;
     }
 }
 
-async function startCamera() {
-    // Lock requested device ID from user selection or dropdown
-    const requestedDeviceId = userSelectedDeviceId || cameraSelect.value;
+async function startCamera(targetDeviceId = null) {
+    if (!checkMediaDevicesSupport()) return;
+
+    const requestedDeviceId = targetDeviceId || userSelectedDeviceId || (cameraSelect.value || null);
     const requestedOption   = Array.from(cameraSelect.options).find(o => o.value === requestedDeviceId);
     const cameraLabel       = requestedOption ? requestedOption.text : (requestedDeviceId ? "Selected Camera" : "Default Camera");
 
-    console.log(`[Camera Selection Flow] 1. Initiating switch to: "${cameraLabel}" (ID: ${requestedDeviceId || "default"})`);
+    console.log(`[Camera Selection Flow] 1. Initiating connection to: "${cameraLabel}" (ID: ${requestedDeviceId || "default"})`);
 
-    try {
-        // Reset status badge styling if previously erred
-        statusBadge.style.background = "";
-        statusBadge.innerText = `Connecting to ${cameraLabel}... ⏳`;
+    statusBadge.style.background = "";
+    statusBadge.innerText = `Connecting to ${cameraLabel}... ⏳`;
 
-        // Release previous stream handle
-        if (currentStream) {
-            console.log("[Camera Selection Flow] Stopping previous camera stream tracks...");
-            currentStream.getTracks().forEach(track => track.stop());
-            currentStream = null;
-        }
+    // Release previous stream handle
+    if (currentStream) {
+        console.log("[Camera Selection Flow] Stopping previous camera stream tracks...");
+        currentStream.getTracks().forEach(track => track.stop());
+        currentStream = null;
+    }
 
-        // Fully reset tracking and canvas state on camera switch
-        gestureStart = null;
-        canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+    // Reset tracking and canvas state on camera switch
+    gestureStart = null;
+    canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
 
-        // Build constraints targeting ONLY the requested device
-        let constraints;
-        if (requestedDeviceId) {
-            constraints = {
-                video: {
-                    deviceId: { exact: requestedDeviceId }
-                }
-            };
-        } else {
-            constraints = { video: true };
-        }
+    let stream = null;
+    let fallbackUsed = false;
 
-        console.log("[Camera Selection Flow] 2. Requesting getUserMedia with constraints:", JSON.stringify(constraints));
-
-        let stream;
+    // Strategy 1: If specific device requested, attempt exact device constraint
+    if (requestedDeviceId) {
         try {
-            stream = await navigator.mediaDevices.getUserMedia(constraints);
-        } catch (primaryErr) {
-            console.warn(`[Camera Selection Flow] Primary constraint { exact: ${requestedDeviceId} } failed:`, primaryErr);
-            if (requestedDeviceId) {
-                console.log("[Camera Selection Flow] Retrying with { deviceId: { ideal } } constraint...");
-                // Secondary attempt targeting requested deviceId loosely
+            console.log(`[Camera Selection Flow] 2a. Requesting deviceId exact: "${requestedDeviceId}"`);
+            stream = await navigator.mediaDevices.getUserMedia({
+                video: { deviceId: { exact: requestedDeviceId } }
+            });
+        } catch (exactErr) {
+            console.warn("[Camera Selection Flow] Exact device constraint failed, trying ideal constraint:", exactErr);
+            // Strategy 2: Try ideal constraint
+            try {
                 stream = await navigator.mediaDevices.getUserMedia({
                     video: { deviceId: { ideal: requestedDeviceId } }
                 });
-            } else {
-                throw primaryErr;
+            } catch (idealErr) {
+                console.warn("[Camera Selection Flow] Ideal device constraint failed, falling back to default camera:", idealErr);
+                fallbackUsed = true;
             }
         }
+    }
 
-        // Verify active track
-        const activeTrack = stream.getVideoTracks()[0];
-        const settings    = activeTrack ? (activeTrack.getSettings ? activeTrack.getSettings() : {}) : {};
-        console.log(`[Camera Selection Flow] 3. Stream acquired successfully! Track label: "${activeTrack?.label}", deviceId: "${settings.deviceId}"`);
-
-        // Check if stream actually matches requested device
-        if (requestedDeviceId && settings.deviceId && settings.deviceId !== requestedDeviceId) {
-            console.warn(`⚠️ Mismatch! Requested ${requestedDeviceId} but browser returned ${settings.deviceId}`);
-        }
-
-        currentStream   = stream;
-        video.srcObject = stream;
-
-        // Diagnostic log info
-        if (activeTrack) {
-            const caps = activeTrack.getCapabilities ? activeTrack.getCapabilities() : {};
-            console.group("📷 Active Camera Diagnostic Info");
-            console.log("Device Label:", activeTrack.label || "Unknown Camera");
-            console.log("Track Settings:", settings);
-            console.log("Track Capabilities:", caps);
-            
-            if (settings.width && settings.height) {
-                const aspect = (settings.width / settings.height).toFixed(2);
-                console.log(`Live Stream Resolution: ${settings.width}x${settings.height} (Aspect ratio: ${aspect})`);
+    // Strategy 3: Fallback to standard video stream (any available working camera)
+    if (!stream) {
+        try {
+            console.log("[Camera Selection Flow] 2b. Requesting standard HD camera stream...");
+            stream = await navigator.mediaDevices.getUserMedia({
+                video: {
+                    width: { ideal: 1920 },
+                    height: { ideal: 1080 }
+                }
+            });
+        } catch (stdErr) {
+            console.warn("[Camera Selection Flow] HD constraint failed, trying basic { video: true }:", stdErr);
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            } catch (basicErr) {
+                console.error("❌ [Camera Selection Flow] All camera attempts failed:", basicErr);
+                statusBadge.style.background = "#e11d48";
+                
+                let errorMsg = `❌ Camera error: ${basicErr.name || 'Unknown'}`;
+                if (basicErr.name === 'NotAllowedError' || basicErr.name === 'PermissionDeniedError') {
+                    errorMsg = "❌ Camera permission denied. Please allow camera access in your browser address bar.";
+                } else if (basicErr.name === 'NotReadableError' || basicErr.name === 'TrackStartError') {
+                    errorMsg = "❌ Camera is in use by another application or disconnected.";
+                } else if (basicErr.name === 'NotFoundError' || basicErr.name === 'DevicesNotFoundError') {
+                    errorMsg = "❌ No camera found on this device.";
+                }
+                statusBadge.innerText = errorMsg;
+                return;
             }
-            if (settings.frameRate) {
-                console.log(`Stream Frame Rate: ${settings.frameRate} FPS`);
+        }
+    }
+
+    currentStream   = stream;
+    video.srcObject = stream;
+
+    try {
+        await video.play();
+    } catch (playErr) {
+        console.warn("video.play() warning:", playErr);
+    }
+
+    const activeTrack = stream.getVideoTracks()[0];
+    const settings    = activeTrack ? (activeTrack.getSettings ? activeTrack.getSettings() : {}) : {};
+    console.log(`[Camera Selection Flow] 3. Stream acquired successfully! Track label: "${activeTrack?.label}", deviceId: "${settings.deviceId}"`);
+
+    // Refresh device list and sync active device
+    await setupCameraList(settings.deviceId);
+
+    if (fallbackUsed) {
+        statusBadge.style.background = "#d97706";
+        statusBadge.innerText = `⚠️ Selected camera unavailable, switched to: ${activeTrack?.label || 'Default Camera'}`;
+        setTimeout(() => {
+            if (statusBadge.style.background === "rgb(217, 119, 6)") {
+                statusBadge.style.background = "";
             }
-            console.groupEnd();
+        }, 4000);
+    } else {
+        statusBadge.style.background = "";
+    }
+
+    const handleVideoReady = () => {
+        console.log(`📹 Video stream active: ${video.videoWidth}x${video.videoHeight}, readyState: ${video.readyState}`);
+        updateCameraAspect();
+        if (!isPredicting) {
+            isPredicting = true;
+            predict();
         }
+    };
 
-        // Refresh device labels (permission is now granted)
-        await setupCameraList();
-        
-        // Ensure dropdown STAYS on the user's selected camera ID!
-        if (userSelectedDeviceId && Array.from(cameraSelect.options).some(o => o.value === userSelectedDeviceId)) {
-            cameraSelect.value = userSelectedDeviceId;
-        }
+    video.onloadedmetadata = handleVideoReady;
+    video.onloadeddata     = handleVideoReady;
 
-        console.log(`[Camera Selection Flow] 4. UI updated. Selected camera locked to: "${cameraSelect.value}"`);
-
-        const handleVideoReady = () => {
-            console.log(`📹 Video stream active: ${video.videoWidth}x${video.videoHeight}, readyState: ${video.readyState}`);
-            updateCameraAspect();
-            if (!isPredicting) {
-                isPredicting = true;
-                predict();
-            }
-        };
-
-        video.onloadedmetadata = handleVideoReady;
-        video.onloadeddata     = handleVideoReady;
-
-        if (video.videoWidth && video.videoHeight) {
-            handleVideoReady();
-        }
-    } catch (err) {
-        console.error(`❌ [Camera Selection Flow] Failed to open "${cameraLabel}":`, err);
-        
-        // STICKY SELECTION: Keep dropdown on the user's selected camera option
-        if (userSelectedDeviceId && Array.from(cameraSelect.options).some(o => o.value === userSelectedDeviceId)) {
-            cameraSelect.value = userSelectedDeviceId;
-        }
-
-        statusBadge.style.background = "#e11d48";
-        statusBadge.innerText = `❌ Could not connect to "${cameraLabel}". Please check if camera is connected & EOS Webcam Utility is active.`;
+    if (video.videoWidth && video.videoHeight) {
+        handleVideoReady();
     }
 }
 
@@ -699,13 +729,24 @@ function isLSelection(landmarks) {
     const dist = (p1, p2) => Math.hypot(p1.x - p2.x, p1.y - p2.y);
     const wrist = landmarks[0];
 
-    // Index finger extended (Tip 8 further from wrist than PIP 6)
-    const isIndexExt = dist(landmarks[8], wrist) > dist(landmarks[6], wrist) * 0.85;
+    // 1. Index finger clearly extended
+    // Tip (8) significantly farther from wrist (0) and MCP (5) than PIP (6)
+    const isIndexExt = dist(landmarks[8], wrist) > dist(landmarks[6], wrist) * 1.15 &&
+                       dist(landmarks[8], landmarks[5]) > dist(landmarks[6], landmarks[5]) * 1.3;
 
-    // Thumb extended (Tip 4 further from wrist than MCP 2)
-    const isThumbExt = dist(landmarks[4], wrist) > dist(landmarks[2], wrist) * 0.85;
+    // 2. Thumb clearly extended
+    // Tip (4) significantly farther from MCP (2) and wrist (0)
+    const isThumbExt = dist(landmarks[4], wrist) > dist(landmarks[2], wrist) * 1.1 &&
+                       dist(landmarks[4], landmarks[2]) > dist(landmarks[3], landmarks[2]) * 1.2;
 
-    // L-Shape Angle check between thumb vector (2->4) and index vector (5->8)
+    // 3. Middle, Ring, Pinky MUST BE CURLED IN (eliminates open hands, waving, high-fives)
+    const checkCurled = (tip, pip, mcp) => {
+        return dist(landmarks[tip], wrist) < dist(landmarks[pip], wrist) + 0.04 ||
+               dist(landmarks[tip], landmarks[mcp]) < dist(landmarks[pip], landmarks[mcp]) * 1.15;
+    };
+    const isOthersCurled = checkCurled(12, 10, 9) && checkCurled(16, 14, 13) && checkCurled(20, 18, 17);
+
+    // 4. L-Shape Angle check between thumb vector (2->4) and index vector (5->8)
     const vecThumb = { x: landmarks[4].x - landmarks[2].x, y: landmarks[4].y - landmarks[2].y };
     const vecIndex = { x: landmarks[8].x - landmarks[5].x, y: landmarks[8].y - landmarks[5].y };
     
@@ -714,13 +755,13 @@ function isLSelection(landmarks) {
     const magI = Math.hypot(vecIndex.x, vecIndex.y);
     
     let isLAngle = false;
-    if (magT > 0 && magI > 0) {
+    if (magT > 0.04 && magI > 0.04) {
         const cosTheta = dot / (magT * magI);
-        // Angle between ~30 deg and ~150 deg (|cos| < 0.86)
-        isLAngle = Math.abs(cosTheta) < 0.86;
+        // Angle strictly between ~50 deg and ~130 deg (|cos| < 0.65)
+        isLAngle = Math.abs(cosTheta) < 0.65;
     }
 
-    return isIndexExt && isThumbExt && isLAngle;
+    return isIndexExt && isThumbExt && isOthersCurled && isLAngle;
 }
 
 // ── Main prediction loop ──────────────────────────────────────────────────────
@@ -759,16 +800,23 @@ async function predict() {
 
         if (handCount === 0) {
             statusBadge.innerText = debugMode 
-                ? `🐞 Debug FPS: ${fpsCounter} | Press Space, click 📸 Start Capture, or pose L-shape 👐`
+                ? `🐞 Debug FPS: ${fpsCounter} | Press Space, click 📸 Start Capture, or pose 👐`
                 : "Press Space, click 📸 Start Capture, or pose L-shape gesture 👐";
             gestureStart = null;
         } else {
             const handsL = results.landmarks.filter(isLSelection);
-            if (handsL.length >= 1) {
+            
+            // Require 2 hands in L-shape (Son Heung-min pose) or 1 strict L-hand held steady
+            const isTwoHandPose = handsL.length >= 2;
+            const isOneHandPose = handsL.length === 1 && handCount === 1;
+            
+            if (isTwoHandPose || isOneHandPose) {
+                const requiredHoldTime = isTwoHandPose ? 1200 : 1600; // 1.2s for 2 hands, 1.6s for 1 hand
+                
                 if (!gestureStart) gestureStart = Date.now();
                 const elapsed = Date.now() - gestureStart;
 
-                if (elapsed > 1000) {
+                if (elapsed >= requiredHoldTime) {
                     gestureStart = null;
                     startPhotoboothFlow();
                 } else {
@@ -778,12 +826,16 @@ async function predict() {
                     canvasCtx.setLineDash([20, 10]);
                     canvasCtx.strokeRect(40, 40, canvasElement.width - 80, canvasElement.height - 80);
                     canvasCtx.setLineDash([]);
-                    statusBadge.innerText = `RECOGNIZING GESTURE... ${(elapsed / 1000).toFixed(1)}s (FPS: ${fpsCounter})`;
+                    
+                    const progress = Math.min((elapsed / requiredHoldTime) * 100, 100).toFixed(0);
+                    statusBadge.innerText = isTwoHandPose
+                        ? `HOLD 2-HAND POSE... ${progress}% 👐`
+                        : `HOLD L-GESTURE... ${progress}% 👆`;
                 }
             } else {
                 statusBadge.innerText = debugMode
-                    ? `🐞 Debug FPS: ${fpsCounter} | Hands seen: ${handCount} | Pose L-shape 👐 or click 📸 Start`
-                    : "Pose L-shape gesture 👐 or click 📸 Start Capture";
+                    ? `🐞 Debug FPS: ${fpsCounter} | Hands seen: ${handCount} (L-shape: ${handsL.length}) | Pose 👐 or click 📸 Start`
+                    : "Form clear L-shape gesture 👐 or click 📸 Start Capture";
                 gestureStart = null;
             }
         }
