@@ -887,26 +887,40 @@ async function predict() {
 
 // ── Center-crop capture (mirrors server-side Python exactly) ──────────────────
 /**
- * Capture a frame from the live video, center-cropped to match slot's
- * aspect ratio.  Returns an offscreen <canvas> ready for toBlob().
+ * Capture a frame from the live video that EXACTLY matches the slot guide overlay 
+ * as seen by the user in the object-fit: cover container.
+ * Returns an offscreen <canvas> ready for toBlob().
  */
 function captureSlot(slot) {
     const vW = video.videoWidth;
     const vH = video.videoHeight;
-    const slotAR = slot.w / slot.h;
-    const camAR  = vW / vH;
+    const cW = canvasElement.width;
+    const cH = canvasElement.height;
 
-    let srcX, srcY, srcW, srcH;
-    if (camAR > slotAR) {
-        srcH = vH;
-        srcW = Math.round(vH * slotAR);
-        srcX = Math.round((vW - srcW) / 2);
-        srcY = 0;
-    } else {
-        srcW = vW;
-        srcH = Math.round(vW / slotAR);
-        srcX = 0;
-        srcY = Math.round((vH - srcH) / 2);
+    // The scale of the video as it's rendered in the object-fit: cover container
+    const scale = Math.max(cW / vW, cH / vH);
+
+    const renderW = vW * scale;
+    const renderH = vH * scale;
+
+    const offsetX = (cW - renderW) / 2;
+    const offsetY = (cH - renderH) / 2;
+
+    const cropX = slotGuideCurrent ? slotGuideCurrent.cropX : 0;
+    const cropY = slotGuideCurrent ? slotGuideCurrent.cropY : 0;
+    const cropW = slotGuideCurrent ? slotGuideCurrent.cropW : cW;
+    const cropH = slotGuideCurrent ? slotGuideCurrent.cropH : cH;
+
+    // Map canvas crop coordinates back to the natural video dimensions
+    let srcX = (cropX - offsetX) / scale;
+    const srcY = (cropY - offsetY) / scale;
+    const srcW = cropW / scale;
+    const srcH = cropH / scale;
+
+    // If the video is visually flipped, the visual left edge actually corresponds 
+    // to the right side of the raw video feed. We must invert the X coordinate mapping.
+    if (isMirrored) {
+        srcX = vW - ((cropX + cropW - offsetX) / scale);
     }
 
     const cap = document.createElement("canvas");
