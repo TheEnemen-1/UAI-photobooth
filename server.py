@@ -18,7 +18,7 @@ if not os.path.exists(UPLOAD_FOLDER):
 # CLOUDFLARE / PUBLIC URL SETTING:
 # - Leave empty "" to auto-detect public tunnel or use local Wi-Fi IP
 # - Or set your custom domain / trycloudflare link here or via PUBLIC_URL env var
-PUBLIC_URL = os.environ.get("PUBLIC_URL", " https://does-schemes-warcraft-trim.trycloudflare.com")
+PUBLIC_URL = os.environ.get("PUBLIC_URL", "https://fired-insider-became-cool.trycloudflare.com")
 # ==========================================================================
 
 # In-process cache for frame analysis results, keyed by (absolute_path, mtime)
@@ -166,10 +166,12 @@ def create_strip(session_dir, photos_count, frame_path=None):
     """
     Composite captured photos into the frame's transparent cutout slots.
     """
+    scale_factor = 3  # Upscale resolution by 3x for higher quality
+
     if frame_path and os.path.isfile(frame_path):
         meta     = analyze_frame(frame_path)
-        strip_w  = meta['frame_w']
-        strip_h  = meta['frame_h']
+        strip_w  = meta['frame_w'] * scale_factor
+        strip_h  = meta['frame_h'] * scale_factor
         slots    = meta['slots']
 
         canvas = Image.new('RGBA', (strip_w, strip_h), (255, 255, 255, 255))
@@ -178,19 +180,24 @@ def create_strip(session_dir, photos_count, frame_path=None):
             img_file = os.path.join(session_dir, f'photo_{i}.png')
             if os.path.exists(img_file):
                 photo = Image.open(img_file).convert("RGBA")
-                photo = center_crop_to_slot(photo, slot['w'], slot['h'])
-                canvas.paste(photo, (slot['x'], slot['y']))
+                scaled_w = slot['w'] * scale_factor
+                scaled_h = slot['h'] * scale_factor
+                scaled_x = slot['x'] * scale_factor
+                scaled_y = slot['y'] * scale_factor
+                photo = center_crop_to_slot(photo, scaled_w, scaled_h)
+                canvas.paste(photo, (scaled_x, scaled_y))
 
         frame_img = Image.open(frame_path).convert("RGBA")
+        frame_img = frame_img.resize((strip_w, strip_h), Image.Resampling.LANCZOS)
         canvas.alpha_composite(frame_img)
 
     else:
-        strip_w, strip_h = 600, 1800
+        strip_w, strip_h = 600 * scale_factor, 1800 * scale_factor
         canvas = Image.new('RGBA', (strip_w, strip_h), (255, 255, 255, 255))
-        img_w, img_h = 540, 304
-        padding_x = 30
-        start_y   = 60
-        gap       = 60
+        img_w, img_h = 540 * scale_factor, 304 * scale_factor
+        padding_x = 30 * scale_factor
+        start_y   = 60 * scale_factor
+        gap       = 60 * scale_factor
         for i in range(photos_count):
             img_file = os.path.join(session_dir, f'photo_{i}.png')
             if os.path.exists(img_file):

@@ -52,7 +52,7 @@ shutterSound.onerror = () => {
 let handLandmarker;
 let isCapturing     = false;
 let gestureStart    = null;
-let isMirrored      = true;
+let isMirrored      = localStorage.getItem("uai_mirrored") !== "false";
 
 // Telemetry & FPS counters
 let processedFrames = 0;
@@ -152,6 +152,7 @@ async function init() {
     });
 
     // Start camera immediately so preview opens with zero delay
+    video.style.transform = isMirrored ? "scaleX(-1)" : "scaleX(1)";
     await startCamera();
     renderStripPreview([]);
 
@@ -174,8 +175,11 @@ async function autoSelectDefaultFrame() {
         const res = await fetch('/api/frames');
         const list = await res.json();
         if (list && list.length > 0) {
-            // Prefer newspaper.png or 1.png, or fallback to first frame in list
-            const defaultFrame = list.find(f => /newspaper/i.test(f) || /1\.png/i.test(f)) || list[0];
+            // Load saved frame from localStorage, or fallback to default
+            const savedFrame = localStorage.getItem("uai_frame_name");
+            const defaultFrame = (savedFrame && list.includes(savedFrame)) 
+                ? savedFrame 
+                : (list.find(f => /newspaper/i.test(f) || /1\.png/i.test(f)) || list[0]);
             await applyFrameByName(defaultFrame);
         }
     } catch (e) {
@@ -186,6 +190,7 @@ async function autoSelectDefaultFrame() {
 async function applyFrameByName(name) {
     selectedFrameName     = name;
     pendingFrameName      = name;
+    if (name) localStorage.setItem("uai_frame_name", name);
     frameMeta             = null;
     frameImg              = null;
     slotGuideTarget       = null;
@@ -231,6 +236,7 @@ async function applyFrameByName(name) {
 // ── Camera controls ───────────────────────────────────────────────────────────
 btnFlip.onclick = () => {
     isMirrored = !isMirrored;
+    localStorage.setItem("uai_mirrored", isMirrored);
     const val = isMirrored ? "scaleX(-1)" : "scaleX(1)";
     video.style.transform        = val;
 };
@@ -257,7 +263,7 @@ function updateCameraAspect() {
     }
 }
 
-let userSelectedDeviceId = null; // Sticky state for explicitly selected camera
+let userSelectedDeviceId = localStorage.getItem("uai_camera_id") || null; // Sticky state for explicitly selected camera
 let isPopulatingCameras = false;
 
 async function setupCameraList(activeDeviceId = null) {
@@ -298,6 +304,7 @@ async function setupCameraList(activeDeviceId = null) {
 
         cameraSelect.onchange = () => {
             userSelectedDeviceId = cameraSelect.value;
+            localStorage.setItem("uai_camera_id", userSelectedDeviceId);
             console.log(`[Camera Selection Flow] 📌 User selected camera deviceId: "${userSelectedDeviceId}"`);
             startCamera(userSelectedDeviceId);
         };
